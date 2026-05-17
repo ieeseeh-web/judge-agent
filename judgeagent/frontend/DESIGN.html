@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DESIGN.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/frontend/DESIGN.md</code></div>
+<h1 id="frontend-design-system">Frontend Design System</h1>
+<p>The cream canvas runs continuously through every section — there are no decorative dividers, no shaded section bands; only the 1px hairline beneath section eyebrows and footer column rules separate content blocks.</p>
+<h2 id="elevation-depth">Elevation &amp; Depth</h2>
+<table>
+<thead><tr><th>Level</th><th>Treatment</th><th>Use</th></tr></thead>
+<tbody>
+<tr><td>0 — Flat</td><td>No border, no shadow</td><td>Default for canvas-on-canvas blocks, hero text, body sections</td></tr>
+<tr><td>1 — Hairline border</td><td>1px solid {colors.hairline}</td><td>Marketing cards, pricing tier cards, doc sidebar items, footer column rules</td></tr>
+<tr><td>2 — Hairline soft</td><td>1px solid {colors.hairline-soft}</td><td>In-card row divider between adjacent rows</td></tr>
+<tr><td>3 — Inverted dark code block</td><td>{colors.surface-dark} fill</td><td>Code samples inside doc cards — the system&#x27;s only &quot;elevated&quot; surface uses color, not shadow</td></tr>
+</tbody>
+</table>
+<p>The system has no drop-shadow elevation in marketing or product chrome. Cards sit flat on cream with thin olive borders. The single inverted moment is the dark code-block surface used inside doc article body cards.</p>
+<h3 id="decorative-depth">Decorative Depth</h3>
+<p>Depth comes entirely from illustration and the pastel callout band system, not from CSS effects:</p>
+<ul>
+<li>Hand-drawn hedgehog mascots — characters in various costumes (lab coat, terminal, lounge chair, magnifying glass, hammock, hat) scattered across pages as marginalia. Always rendered as flat color illustrations, never photographs.</li>
+<li>Pastel callout banners — {component.banner-tip-blue} / -green / -red / -purple soft tinted side-rail panels inside doc articles, each prefixed with an emoji icon (💡 ✅ ⚠️ 📘) and carrying tip/warning/note copy.</li>
+<li>Code blocks — full-width dark olive-charcoal panels on {colors.surface-dark} with white code text. The system&#x27;s most cinematic surface, used inside white doc cards.</li>
+<li>Outline product icons in the doc sidebar — small rounded-square mini-illustrations (chart icon, funnel, session-replay icon) mark each major product section.</li>
+</ul>
+<h2 id="shapes">Shapes</h2>
+<h3 id="border-radius-scale">Border Radius Scale</h3>
+<table>
+<thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+<tbody>
+<tr><td>{rounded.none}</td><td>0px</td><td>Sub-nav strip, footer, doc sidebar, primary nav — flat structural surfaces</td></tr>
+<tr><td>{rounded.xs}</td><td>2px</td><td>Inline &lt;code&gt; chips, micro-rule highlights</td></tr>
+<tr><td>{rounded.sm}</td><td>4px</td><td>Inline buttons, form inputs, micro chips</td></tr>
+<tr><td>{rounded.md}</td><td>6px</td><td>Marketing cards, pricing cards, doc cards, code blocks, every standard CTA</td></tr>
+<tr><td>{rounded.lg}</td><td>8px</td><td>Tab top corners (<code>6px 6px 0 0</code> on active tab) and rare large containers</td></tr>
+<tr><td>{rounded.full}</td><td>9999px</td><td>Pill chips and pill-style CTAs (&quot;Get started — free&quot; sticky CTA in nav)</td></tr>
+</tbody>
+</table>
+<p>The radius vocabulary clusters around 4–6px for nearly everything; the only fully-rounded element is the pill-style sticky nav CTA and inline pill chips.</p>
+<h3 id="photography-geometry">Photography Geometry</h3>
+<p>There is no photography. Visual elements are limited to:</p>
+<ul>
+<li>Hedgehog character illustrations — flat-color cartoon hedgehogs ranging from ~80px (in-card mascot) to ~240px (hero illustration). Always at native aspect, never cropped to a frame.</li>
+<li>Outline product icons in the doc sidebar — 20–24px rounded-square illustrations.</li>
+<li>Inline emoji at 14–16px inside callout banners (💡 ✅ ⚠️ 📘) — used as functional iconography rather than decoration.</li>
+<li>Section illustrations on the home page — small hedgehog vignettes paired with each &quot;Understand product usage&quot; / &quot;Build sticky habits&quot; / &quot;Test before launch&quot; feature row.</li>
+</ul>
+<h2 id="components">Components</h2>
+<blockquote><p>No hover states documented per system policy. Each spec covers Default and Active/Pressed only.</p></blockquote>
+<h3 id="buttons">Buttons</h3>
+<p><code>button-primary</code> — the universal PostHog CTA</p>
+<ul>
+<li>Background {colors.primary} (yellow-orange), text {colors.on-primary} (deep olive), type {typography.button-md}, padding 8px 16px, height 40px, rounded {rounded.md}.</li>
+<li>Used for &quot;Get started — free&quot; (sticky top-nav CTA), &quot;Sign up&quot;, &quot;Try it free&quot;, &quot;Subscribe&quot; — every primary action.</li>
+<li>Pressed state lives in button-primary-pressed — background drops to {colors.primary-pressed}.</li>
+</ul>
+<p><code>button-secondary</code> — soft alternative on cream canvas</p>
+<ul>
+<li>Background {colors.surface-soft} (<code>#e5e7e0</code>), text {colors.ink}, type {typography.button-md}, padding 8px 16px, height 40px, rounded {rounded.md}.- &quot;Talk to sales&quot;, &quot;Read docs&quot;, &quot;Watch demo&quot; — second-tier actions paired with the yellow primary.</li>
+</ul>
+<p><code>button-tertiary</code> — ghost text button</p>
+<ul>
+<li>Background transparent, text {colors.ink}, type {typography.button-md}, padding 8px 12px, rounded {rounded.md}.</li>
+<li>Lowest-emphasis action: &quot;See all docs →&quot;, &quot;Browse all features&quot;.</li>
+</ul>
+<p><code>button-disabled</code></p>
+<ul>
+<li>Background {colors.surface-soft}, text {colors.ash} — flat soft cream-gray.</li>
+</ul>
+<h3 id="tabs-chips">Tabs &amp; Chips</h3>
+<p><code>product-tab</code> + <code>product-tab-active</code> — major product section tabs</p>
+<ul>
+<li>Default: transparent background, text {colors.body}, type {typography.body-strong}, padding 8px 12px, rounded {rounded.md}.</li>
+<li>Active: background flips to {colors.surface-card} (white), text {colors.ink} — the tab card lifts off the cream canvas as the visual signal of selection.</li>
+</ul>
+<p><code>pill-tab</code> + <code>pill-tab-active</code> — compact filter pill</p>
+<ul>
+<li>Default: transparent background, text {colors.body}, type {typography.button-sm}, padding 6px 14px, rounded {rounded.full}.</li>
+<li>Active: background flips to {colors.ink}, text {colors.on-dark} — the chip flips fully inverted on selection.</li>
+</ul>
+<p><code>badge-uppercase</code> — text-only utility label</p>
+<ul>
+<li>Background transparent, text {colors.body} in {typography.utility-xs} (uppercase) — used as in-list category prefix (&quot;FEATURE FLAG&quot;, &quot;EXPERIMENT&quot;, &quot;HEATMAP&quot;).</li>
+</ul>
+<p><code>badge-promo</code> — small inline pill chip</p>
+<ul>
+<li>Background {colors.accent-blue-soft}, text {colors.link-blue}, type {typography.caption-xs}, padding 2px 8px, rounded {rounded.full}.</li>
+<li>&quot;New&quot;, &quot;Beta&quot;, &quot;Coming soon&quot; pill labels overlaid on cards.</li>
+</ul>
+<h3 id="inputs-forms">Inputs &amp; Forms</h3>
+<p><code>text-input</code> + <code>text-input-focused</code></p>
+<ul>
+<li>Default: background {colors.surface-card}, text {colors.ink}, 1px solid {colors.hairline}, type {typography.body-md}, padding 8px 12px, height 36px, rounded {rounded.md}.</li>
+<li>Focused: same surface; 2px solid {colors.accent-blue} border replaces the 1px hairline + a translucent {colors.focus-ring} outline.</li>
+</ul>
+<p><code>search-input</code> — utility search field (doc sidebar, &quot;Ask PostHog AI&quot;)</p>
+<ul>
+<li>Same dimensions as text-input with a magnifier glyph at the left edge in {colors.mute}.</li>
+</ul>
+<h3 id="cards-containers">Cards &amp; Containers</h3>
+<p><code>product-card</code> — marketing tile / feature card</p>
+<ul>
+<li>Container: background {colors.surface-card} (white), 1px solid {colors.hairline}, padding {spacing.xl} (24px), rounded {rounded.md}.</li>
+<li>Layout: small hedgehog illustration at top-left, {typography.heading-sm-mixed} title, {typography.body-sm} description, optional {component.button-tertiary} &quot;Learn more →&quot; link.</li>
+</ul>
+<p><code>doc-card</code> — doc article body card</p>
+<ul>
+<li>Container: background {colors.surface-doc} (<code>#fcfcfa</code> warm-white), 1px solid {colors.hairline}, padding {spacing.xl} (24px), rounded {rounded.md}.</li>
+<li>Carries article body sections, code blocks, callout banners, and tables inside doc pages.</li>
+</ul>
+<p><code>feature-tile</code> — small marketing feature tile</p>
+<ul>
+<li>Container: background {colors.surface-card}, 1px solid {colors.hairline}, padding {spacing.lg} (20px), rounded {rounded.md}.</li>
+<li>Used in 3-up or 4-up grids on home and workflows pages — paired with a small icon and a 1-line description.</li>
+</ul>
+<p><code>pricing-tier-card</code> — pricing plan card</p>
+<ul>
+<li>Container: background {colors.surface-card}, 1px solid {colors.hairline}, padding {spacing.xxl} (32px), rounded {rounded.md}.</li>
+<li>Layout: tier name in {typography.display-lg} (24px / 800 / -0.6px), large price + period, feature checklist with check-icon bullets, primary or secondary CTA at bottom.</li>
+</ul>
+<p><code>hedgehog-mascot-card</code> — feature card with margin-anchored hedgehog</p>
+<ul>
+<li>Same chrome as {component.product-card} but with a hand-drawn hedgehog illustration anchored in the right margin or top-right corner — the brand&#x27;s signature card variant.</li>
+</ul>
+<h3 id="callout-banners">Callout Banners</h3>
+<p><code>banner-tip-blue</code> + <code>banner-tip-green</code> + <code>banner-tip-red</code> + <code>banner-tip-purple</code></p>
+<ul>
+<li>Background {colors.accent-blue-soft} / {colors.accent-green-soft} / {colors.accent-red-soft} / {colors.accent-purple-soft}, text {colors.ink}, type {typography.body-md}, padding 16px 20px, rounded {rounded.md}.</li>
+<li>Each prefixed with an inline emoji icon (💡 / ✅ / ⚠️ / 📘) followed by an inline label and body copy.</li>
+<li>Only appear inside doc article body.The four-color callout family is the brand&#x27;s information-architecture vocabulary for inline tips/warnings/info inside long-form documentation.</li>
+</ul>
+<h3 id="code">Code</h3>
+<p><code>code-block</code> — dark code sample inside doc card</p>
+<ul>
+<li>Container: background {colors.surface-dark} (deep olive-charcoal), text {colors.on-dark} in {typography.code-sm}, padding 16px 20px, rounded {rounded.md}.</li>
+<li>Syntax highlighting uses muted accent colors (blue for keywords, green for strings, purple for numbers) — never the bright accent colors used in callout banners.</li>
+</ul>
+<p><code>inline-code</code> — small inline &lt;code&gt; chip</p>
+<ul>
+<li>Background {colors.surface-soft}, text {colors.ink} in {typography.code-xs}, padding 2px 6px, rounded {rounded.xs} (2px).</li>
+<li>Used inside body prose to mark code snippets and identifiers.</li>
+</ul>
+<h3 id="navigation">Navigation</h3>
+<p><code>primary-nav</code></p>
+<ul>
+<li>Background {colors.canvas} (cream — same as the page), text {colors.ink}, height 56px, type {typography.body-strong}, rounded {rounded.none}.</li>
+<li>Layout (desktop): PostHog wordmark + hedgehog logo at left, nav menu cluster (&quot;Pricing · Docs · Community · Company&quot;), right cluster with a search-glyph, &quot;Login&quot; link, and the always-yellow {component.button-primary} &quot;Get started — free&quot; pill anchored to the far right.</li>
+</ul>
+<p><code>sub-nav-strip</code> — secondary nav bar (under primary)</p>
+<ul>
+<li>Background {colors.surface-soft}, text {colors.body} in {typography.body-xs}, height 40px, rounded {rounded.none}.</li>
+<li>Sits directly below the primary nav on workflows / product pages with section anchor links and a contextual &quot;Get started →&quot; link at the right.</li>
+</ul>
+<p><code>doc-sidebar</code> — sticky doc-page left sidebar</p>
+<ul>
+<li>Background {colors.canvas}, text {colors.body} in {typography.body-xs}, width 240px, rounded {rounded.none}.</li>
+<li>Layout: search-input &quot;Ask PostHog AI&quot; at top, then a vertical list of section headers each with a small rounded outline-icon mini-illustration, then nested item links indented under the active header.</li>
+</ul>
+<p>Top Nav (Mobile)</p>
+<ul>
+<li>Hamburger menu icon at left, PostHog wordmark + hedgehog at center, search + sticky yellow &quot;Get started — free&quot; CTA at right. Primary nav collapses into a full-height drawer that slides from the left.</li>
+</ul>
+<h3 id="footer">Footer</h3>
+<p><code>footer-section</code></p>
+<ul>
+<li>Background {colors.canvas}, text {colors.body} in {typography.body-xs}, padding 32px 24px, rounded {rounded.none}, with a 1px {colors.hairline} top rule.</li>
+<li>Layout: 6-column horizontal link grid (Product · Resources · Company · Community · Pricing · Legal), each column with a {typography.utility-xs} (uppercase) header and a vertical list of links in {typography.body-xs} {colors.body}.</li>
+<li>Bottom row: PostHog wordmark + small hedgehog illustration, copyright in {typography.caption-xs} {colors.mute}, social-icon row at far-right.</li>
+</ul>
+<h3 id="inline">Inline</h3>
+<p><code>link-inline</code> — body-prose anchor link</p>
+<ul>
+<li>{colors.link-teal} (<code>#1078a3</code>) in body prose with no underline by default; underline appears on focus. The brand&#x27;s primary inline link color.</li>
+</ul>
+<h2 id="do-s-and-don-ts">Do&#x27;s and Don&#x27;ts</h2>
+<h3 id="do">Do</h3>
+<ul>
+<li>Use {colors.canvas} (cream — <code>#eeefe9</code>) as the page body. Never substitute pure white as the canvas.</li>
+<li>Reserve {colors.primary} (yellow-orange) for the primary CTA pill only. The &quot;Get started — free&quot; treatment is the brand&#x27;s anchor.</li>
+<li>Render the brand wordmark with the hedgehog illustration alongside it, not as a stand-alone wordmark. The hedgehog IS the brand identity.</li>
+<li>Use IBM Plex Sans Variable across every text role — body 400, emphasis 600/700, display 800.</li>
+<li>Stack content sections at {spacing.section} (80px) rhythm with no decorative dividers between them; let the cream canvas continue uninterrupted.</li>
+<li>Use {component.banner-tip-blue} / -green / -red / -purple only inside doc article body for tip/warning/note panels — keep marketing chrome out of the four-color callout family.</li>
+<li>Pair every code sample with the dark {component.code-block} surface; inline &lt;code&gt; chips use {component.inline-code} (cream surface-soft chip).</li>
+<li>Anchor a hedgehog mascot illustration in feature tile margins on home and workflows pages — the system&#x27;s signature decoration.</li>
+</ul>
+<h3 id="don-t">Don&#x27;t</h3>
+<ul>
+<li>Don&#x27;t introduce drop shadows on cards. Cards sit flat on cream with thin olive borders only.- Don&#x27;t add a second saturated chromatic CTA. Yellow-orange is the only loud color in the system.</li>
+<li>Don&#x27;t replace the cream canvas with pure white or full-bleed dark hero bands. The cream is the brand.</li>
+<li>Don&#x27;t use the four-color callout banner pastels (<code>{colors.accent-blue-soft}</code>, -green, -red, <code>-purple</code>) as marketing-card backgrounds. They belong to inline doc content only.</li>
+<li>Don&#x27;t substitute the hedgehog illustration with a generic icon set. The character system is the brand.</li>
+<li>Don&#x27;t use uppercase transform outside of {typography.heading-sm}, {typography.utility-xs}, and {typography.caption-xs}. Uppercase is reserved for eyebrows and footer category headers.</li>
+<li>Don&#x27;t pad cards with 32px+ on all sides except for {component.pricing-tier-card}. Standard cards sit at 24px internal padding.</li>
+</ul>
+<h2 id="responsive-behavior">Responsive Behavior</h2>
+<h3 id="breakpoints">Breakpoints</h3>
+<table>
+<thead><tr><th>Name</th><th>Width</th><th>Key Changes</th></tr></thead>
+<tbody>
+<tr><td>ultrawide</td><td>1920px+</td><td>Content max-width holds at 1280px; outer gutters grow to ~80px</td></tr>
+<tr><td>desktop-large</td><td>1440px</td><td>Default — 4-up feature tile grid, 240px sticky doc sidebar visible</td></tr>
+<tr><td>desktop</td><td>1280px</td><td>Same layout with narrower outer gutters</td></tr>
+<tr><td>desktop-small</td><td>1024px</td><td>4-up tiles collapse to 3-up; doc sidebar remains visible</td></tr>
+<tr><td>tablet</td><td>768px</td><td>3-up tiles collapse to 2-up; doc sidebar collapses into a top accordion; primary nav becomes hamburger</td></tr>
+<tr><td>mobile</td><td>480px</td><td>Single-column everything; hero {typography.display-xl} scales 36px → ~28px</td></tr>
+<tr><td>mobile-narrow</td><td>320px</td><td>Section padding tightens to 32px</td></tr>
+</tbody>
+</table>
+<h3 id="touch-targets">Touch Targets</h3>
+<p>All interactive elements meet WCAG AA (≥ 40×40px). {component.button-primary} and {component.button-secondary} sit at 40px height with 16px padding. {component.text-input} sits at 36px (just under AAA but above AA at this size). {component.pill-tab} is ~32–36px height with 14px padding extending to ~44px tappable via inline padding. Doc-sidebar items use 14px text with ~32px line-height + 6px vertical padding for ~44px tap rows.</p>
+<h3 id="collapsing-strategy">Collapsing Strategy</h3>
+<ul>
+<li>Primary nav: desktop horizontal cluster → tablet hamburger drawer at 768px. The yellow &quot;Get started — free&quot; CTA stays visible at every breakpoint.</li>
+<li>Sub-nav strip: desktop horizontal anchor row → tablet horizontal scroll → mobile select dropdown.</li>
+<li>Marketing card grid: 4-up → 3-up → 2-up → 1-up at 1024, 768, and 480px; gutters drop from 16px to 12px on mobile.</li>
+<li>Pricing grid: 3-up → 2+1 → 1-up stacked at tablet and below.</li>
+<li>Doc layout: desktop 240px sidebar + 720px article → tablet sidebar collapses to a top accordion → mobile fully collapsed accordion.</li>
+<li>Footer: 6-up link columns → 3-up at tablet → 2-up at mobile.</li>
+<li>Section padding: {spacing.section} (80px) desktop → 64px tablet → 48px mobile.</li>
+<li>Hero headline: {typography.display-xl} (36px) at desktop, scaling to ~28px at mobile, line-height holding at 1.5.</li>
+</ul>
+<h3 id="image-behavior">Image Behavior</h3>
+<p>The only &quot;imagery&quot; in the system is hand-drawn hedgehog illustrations rendered as inline SVG. They preserve their natural aspect at every breakpoint and scale via CSS width: auto; max-width: 100%. There is no responsive art-direction needed because there is no photography.</p>
+<h2 id="iteration-guide">Iteration Guide</h2>
+<ol>
+<li>Focus on ONE component at a time. Pull its YAML entry and verify every property resolves.</li>
+<li>Reference component names and tokens directly (<code>{colors.primary}</code>, {component.button-primary-pressed}, <code>{rounded.md}</code>) — do not paraphrase.</li>
+<li>Run npx @google/design.md lint DESIGN.md after edits — broken-ref, contrast-ratio, and orphaned-tokens warnings flag issues automatically.</li>
+<li>Add new variants as separate component entries (<code>-pressed</code>, -disabled, <code>-focused</code>) — do not bury them inside prose.</li>
+<li>Default body to {typography.body-md} (16px / 400 / 1.5); reach for {typography.body-strong} for emphasis; reserve {typography.display-lg} (24px / 800) strictly for marketing display moments.</li>
+<li>Keep {colors.primary} scarce per viewport — at most one yellow-orange pill per fold.</li>
+<li>When introducing a new component, ask whether it can be expressed with the existing card + 6px-radius + cream-canvas vocabulary before adding new tokens.The system&#x27;s strength is that it almost never needs new ones.</li>
+</ol>
+<h2 id="known-gaps">Known Gaps</h2>
+<ul>
+<li>Mobile screenshots not captured — responsive behavior synthesizes PostHog&#x27;s mobile pattern (hamburger drawer, single-column grid, doc sidebar accordion) from desktop evidence and the breakpoint stack.</li>
+<li>Hover states not documented by system policy.</li>
+<li>In-product app chrome (PostHog dashboard, charts, session replay player) not in the captured set — the marketing site is documented here, not the in-product analytics interface.</li>
+<li>Authenticated chrome (login modal, account dashboard, billing settings) not in the captured pages.</li>
+<li>Form validation states beyond the focused-state input not present in the captured surfaces.</li>
+<li>Marketing illustration set — the full library of hedgehog character poses is not enumerated here; specific poses (lab coat hedgehog, terminal hedgehog, hammock hedgehog) are noted as visible in screenshots but the full asset library is page-specific.</li>
+</ul>
+</body>
+</html>

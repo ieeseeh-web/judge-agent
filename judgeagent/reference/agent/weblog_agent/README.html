@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>README.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/reference/agent/weblog_agent/README.md</code></div>
+<h1 id="web-log-analysis-react-reference-agent">Web Log Analysis ReAct Reference Agent</h1>
+<p>Judge Agent가 drift를 탐지/분석/리포팅할 기준 대상(reference target) 에이전트입니다.</p>
+<p>이 에이전트는 단순 fixture runner가 아니라, 일반적인 LangChain/LangGraph 기반 AI Agent 구성을 반영합니다.</p>
+<h2 id="agent-구성">Agent 구성</h2>
+<pre><code class="language-text">
+User Request
+  -&gt; LangGraph-style graph
+      -&gt; initialize_agent
+      -&gt; react_agent loop
+          Thought -&gt; Action(tool/mcp/rag) -&gt; Observation
+      -&gt; validate_findings
+      -&gt; finalize report
+</code></pre>
+<p>포함 구성요소:</p>
+<ul>
+<li><strong>LLM</strong>: ReAct action 결정과 최종 리포트 생성</li>
+<li><strong>Prompt</strong>: system prompt, ReAct protocol, tool policy, output contract</li>
+<li><strong>Tools</strong>: 로그 로딩/파싱/필터링/메트릭/이상 탐지 도구</li>
+<li><strong>MCP</strong>: 서비스 소유자, 최근 배포, SLO, dependency metadata 조회</li>
+<li><strong>RAG</strong>: runbook 검색을 통한 원인 후보/대응 가이드 보강</li>
+<li><strong>ReAct loop</strong>: <code>Thought -&amp;gt; Action -&amp;gt; Observation</code> 반복 후 <code>finish</code></li>
+<li><strong>Trace</strong>: Judge Agent가 drift를 판단할 수 있도록 모든 LLM/tool/MCP/RAG/edge/state 이벤트 기록</li>
+</ul>
+<p>현재 구현은 CI 재현성을 위해 표준 라이브러리 기반으로 동작하지만, trace/graph/prompt/tool interface는 LangChain/LangGraph ReAct Agent 관찰 모델에 맞췄습니다. 실제 LangGraph runtime으로 교체해도 Judge Agent 입력 계약은 유지됩니다.</p>
+<h2 id="llm-configuration">LLM configuration</h2>
+<p>OpenAI만 하드코딩하지 않습니다. OpenAI-compatible Chat Completions endpoint라면 OpenAI, vLLM, LM Studio, Ollama OpenAI mode, 사내 LLM Gateway 등 어떤 URL도 사용할 수 있습니다.</p>
+<p>연결 정보는 코드가 아니라 환경 파일 또는 환경변수로 관리합니다.</p>
+<p>권장 방식:</p>
+<pre><code class="language-bash">
+cp reference_agent/weblog_agent/.env.example reference_agent/weblog_agent/.env
+# .env에서 base url/model/auth 설정 수정
+python3 -m reference_agent.weblog_agent.cli run-fixture normal-login-error-spike
+</code></pre>
+<p>또는 별도 파일을 지정합니다.</p>
+<pre><code class="language-bash">
+export WEBLOG_AGENT_ENV_FILE=/secure/path/weblog-agent.env
+</code></pre>
+<p>주요 설정:</p>
+<pre><code class="language-bash">
+WEBLOG_AGENT_LLM_PROVIDER=openai-compatible
+WEBLOG_AGENT_LLM_BASE_URL=http://localhost:1234/v1
+WEBLOG_AGENT_LLM_CHAT_COMPLETIONS_PATH=/chat/completions
+WEBLOG_AGENT_LLM_MODEL=local-model
+WEBLOG_AGENT_LLM_REQUIRE_API_KEY=false
+
+# 인증이 필요한 Gateway/OpenAI 사용 시
+WEBLOG_AGENT_LLM_REQUIRE_API_KEY=true
+WEBLOG_AGENT_LLM_API_KEY_ENV=OPENAI_API_KEY
+WEBLOG_AGENT_LLM_AUTH_HEADER=Authorization
+WEBLOG_AGENT_LLM_AUTH_SCHEME=Bearer
+</code></pre>
+<p>예시:</p>
+<pre><code class="language-bash">
+# OpenAI
+WEBLOG_AGENT_LLM_BASE_URL=https://api.openai.com/v1
+WEBLOG_AGENT_LLM_MODEL=gpt-4o-mini
+WEBLOG_AGENT_LLM_REQUIRE_API_KEY=true
+WEBLOG_AGENT_LLM_API_KEY_ENV=OPENAI_API_KEY
+
+# LM Studio
+WEBLOG_AGENT_LLM_BASE_URL=http://localhost:1234/v1
+WEBLOG_AGENT_LLM_MODEL=local-model
+WEBLOG_AGENT_LLM_REQUIRE_API_KEY=false
+
+# vLLM
+WEBLOG_AGENT_LLM_BASE_URL=http://localhost:8000/v1
+WEBLOG_AGENT_LLM_MODEL=Qwen/Qwen2.5-7B-Instruct
+WEBLOG_AGENT_LLM_REQUIRE_API_KEY=false
+
+# 사내 OpenAI-compatible Gateway
+WEBLOG_AGENT_LLM_BASE_URL=https://llm-gateway.example.com/v1
+WEBLOG_AGENT_LLM_MODEL=company-agent-model
+WEBLOG_AGENT_LLM_REQUIRE_API_KEY=true
+WEBLOG_AGENT_LLM_API_KEY_ENV=COMPANY_LLM_KEY
+</code></pre>
+<p>API key가 없거나 <code>--no-llm</code>을 쓰면 deterministic fallback policy로 ReAct action을 선택합니다. 이 경우에도 trace에는 <code>llm_skipped</code>가 남습니다. trace에는 secret이 기록되지 않고 sanitized config만 기록됩니다.</p>
+<h2 id="run">Run</h2>
+<p>macOS/Linux:</p>
+<pre><code class="language-bash">
+python3 -m reference_agent.weblog_agent.cli list-fixtures
+python3 -m reference_agent.weblog_agent.cli run-fixture normal-login-error-spike
+python3 -m reference_agent.weblog_agent.cli run-fixture normal-login-error-spike --no-llm
+python3 -m reference_agent.weblog_agent.cli run-all --no-llm
+</code></pre>
+<p>Windows PowerShell:</p>
+<pre><code class="language-powershell">
+py -m reference_agent.weblog_agent.cli list-fixtures
+py -m reference_agent.weblog_agent.cli run-fixture normal-login-error-spike
+py -m reference_agent.weblog_agent.cli run-fixture normal-login-error-spike --no-llm
+py -m reference_agent.weblog_agent.cli run-all --no-llm
+</code></pre>
+<p>Custom analysis:</p>
+<pre><code class="language-bash">
+python3 -m reference_agent.weblog_agent.cli analyze \
+  --input &quot;지난 1시간 동안 /api/login 5xx 에러율을 분석해주세요&quot; \
+  --access-log reference_agent/weblog_agent/fixtures/access.log
+</code></pre>
+<p>Outputs:</p>
+<ul>
+<li><code>reference_agent/weblog_agent/traces/*.jsonl</code></li>
+<li><code>reference_agent/weblog_agent/reports/*.md</code></li>
+</ul>
+<h2 id="interactive-chat-mode">Interactive chat mode</h2>
+<p><code>chat</code> starts a context-aware interactive agent session. The existing one-shot ReAct analyzer is preserved, and chat mode wraps it with persisted conversation state so follow-up turns can use the previous analysis context.</p>
+<pre><code class="language-bash">
+python3 -m reference_agent.weblog_agent.cli chat \
+  --access-log reference_agent/weblog_agent/fixtures/access.log \
+  --session-id login-incident \
+  --no-llm
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-text">
+you&gt; 지난 1시간 동안 /api/login 5xx 에러율을 분석해주세요
+agent&gt; 분석 완료: `/api/login` ...
+
+you&gt; 방금 결과에서 가장 의심되는 원인은?
+agent&gt; 이전 분석의 metrics/anomalies/RAG/MCP context를 기반으로 답변
+</code></pre>
+<p>Chat commands:</p>
+<ul>
+<li><code>/help</code> — available commands</li>
+<li><code>/summary</code> — latest compact analysis summary</li>
+<li><code>/reset</code> — clear session turns and prior analysis context</li>
+<li><code>/exit</code> or <code>/quit</code> — end the interactive session</li>
+</ul>
+<p>Session artifacts:</p>
+<ul>
+<li><code>reference_agent/weblog_agent/sessions/*.json</code> — bounded chat state</li>
+<li><code>reference_agent/weblog_agent/traces/*-chat.jsonl</code> — chat turn trace</li>
+<li><code>reference_agent/weblog_agent/traces/*-turn-N.jsonl</code> — child ReAct analysis trace</li>
+<li><code>reference_agent/weblog_agent/reports/*-turn-N.md</code> — child analysis report</li>
+</ul>
+<p>List sessions:</p>
+<pre><code class="language-bash">
+python3 -m reference_agent.weblog_agent.cli list-sessions
+</code></pre>
+<h2 id="react-tools">ReAct tools</h2>
+<ul>
+<li><code>parse_user_request</code></li>
+<li><code>read_log_file</code></li>
+<li><code>parse_access_log</code></li>
+<li><code>filter_log_records</code></li>
+<li><code>compute_log_metrics</code></li>
+<li><code>detect_log_anomalies</code></li>
+<li><code>retrieve_runbook</code> — RAG retriever</li>
+<li><code>get_service_context</code> — MCP-style metadata call</li>
+<li><code>collect_evidence</code></li>
+<li><code>finish</code></li>
+</ul>
+<h2 id="trace-events">Trace events</h2>
+<p>Judge Agent가 drift를 분석할 때 보는 주요 이벤트:</p>
+<ul>
+<li><code>chat_session_start</code> / <code>chat_session_end</code></li>
+<li><code>chat_turn_start</code> / <code>chat_turn_end</code></li>
+<li><code>chat_intent_classified</code></li>
+<li><code>chat_context_built</code></li>
+<li><code>chat_analysis_invoked</code></li>
+<li><code>chat_response_generated</code></li>
+<li><code>run_start</code> / <code>run_end</code></li>
+<li><code>agent_components</code></li>
+<li><code>instruction_snapshot</code></li>
+<li><code>llm_start</code> / <code>llm_end</code> / <code>llm_error</code> / <code>llm_skipped</code></li>
+<li><code>react_step</code></li>
+<li><code>observation</code></li>
+<li><code>node_start</code> / <code>node_end</code></li>
+<li><code>edge_selected</code></li>
+<li><code>tool_start</code> / <code>tool_end</code> / <code>tool_error</code></li>
+<li><code>mcp_start</code> / <code>mcp_end</code> / <code>mcp_error</code></li>
+<li><code>validation_result</code></li>
+<li><code>final_output</code></li>
+</ul>
+<h2 id="drift-scenarios-covered">Drift scenarios covered</h2>
+<p>Reference fixtures can simulate drift such as:</p>
+<ul>
+<li>prompt/output contract drift</li>
+<li>wrong endpoint/tool input drift</li>
+<li>parse error ignored drift</li>
+<li>validation skipped drift</li>
+<li>metric hallucination drift</li>
+<li>missing/incorrect RAG or MCP context drift, to be expanded</li>
+</ul>
+<h2 id="optional-actual-langgraph-app">Optional actual LangGraph app</h2>
+<p>The CLI runner is dependency-light for CI. If you install optional dependencies, the same nodes can be compiled as an actual LangGraph app:</p>
+<pre><code class="language-bash">
+pip install -e &#x27;.[agent]&#x27;
+</code></pre>
+<p>See <code>reference_agent/weblog_agent/langgraph_app.py</code>:</p>
+<pre><code class="language-python">
+from reference_agent.weblog_agent.langgraph_app import build_langgraph_app
+
+app = build_langgraph_app(agent)
+</code></pre>
+<p>This preserves the same node names and state contract:</p>
+<pre><code class="language-text">
+initialize_agent -&gt; react_agent -&gt; validate_findings -&gt; finalize -&gt; END
+</code></pre>
+<h2 id="functional-mcp-server">Functional MCP server</h2>
+<p>MCP is not a mock object. The reference agent starts a real local stdio MCP server:</p>
+<pre><code class="language-bash">
+python3 -m reference_agent.weblog_agent.mcp_server
+</code></pre>
+<p>The agent&#x27;s <code>StdioMCPClient</code> sends JSON-RPC MCP-style messages:</p>
+<ul>
+<li><code>initialize</code></li>
+<li><code>tools/list</code></li>
+<li><code>tools/call</code> with <code>get_service_context</code></li>
+</ul>
+<p><code>get_service_context</code> returns service metadata used by the report:</p>
+<ul>
+<li>service name</li>
+<li>owner</li>
+<li>recent deployments</li>
+<li>dependencies</li>
+<li>SLO</li>
+<li>runbook references</li>
+</ul>
+<p>The trace records this as actual MCP traffic via <code>mcp_start</code> / <code>mcp_end</code> events for both <code>tools/list</code> and <code>tools/call</code>.</p>
+</body>
+</html>

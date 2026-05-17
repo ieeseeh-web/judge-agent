@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>README.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/README.md</code></div>
+<h1 id="judgeagent-패키지-구조">judgeagent 패키지 구조</h1>
+<p><code>judgeagent/</code>는 Judge Agent 프로젝트의 핵심 Python 패키지와 프론트엔드, reference agent 구현을 한곳에 모아둔 디렉터리입니다.</p>
+<h2 id="전체-구성">전체 구성</h2>
+<pre><code class="language-text">
+judgeagent/
+├── backend/              # FastAPI 기반 프론트엔드 API 서버와 CLI 진입점
+├── frontend/             # React/Vite 기반 Judge Agent UI와 프론트엔드 문서
+├── judge_agent/          # trace 분석, drift 탐지, 대화형 Judge Agent 핵심 로직
+├── reference/            # Judge Agent가 평가할 reference web log agent
+└── README.md             # 이 문서
+</code></pre>
+<h2 id="backend">backend/</h2>
+<p>프론트엔드에서 호출하는 API 서버와 <code>judge-agent-simple</code> CLI 엔트리포인트가 들어 있습니다.</p>
+<p>주요 파일:</p>
+<ul>
+<li><code>api.py</code> — FastAPI 앱 생성 및 REST API 라우팅</li>
+<li><code>api_models.py</code> — API 요청/응답 모델과 검증 로직</li>
+<li><code>api_services.py</code> — reference run, analysis, judge session 처리 서비스</li>
+<li><code>api_store.py</code> — <code>artifacts/frontend-api</code> 기반 파일 저장소</li>
+<li><code>cli.py</code> — trace 분석, batch 분석, 대화형 judge chat CLI</li>
+</ul>
+<p>주요 API:</p>
+<ul>
+<li><code>GET /api/health</code></li>
+<li><code>GET /api/config</code></li>
+<li><code>GET /api/metrics</code></li>
+<li><code>GET /api/reference/fixtures</code></li>
+<li><code>POST /api/reference/runs</code></li>
+<li><code>POST /api/analyses</code></li>
+<li><code>POST /api/judge/sessions</code></li>
+<li><code>POST /api/judge/sessions/{session_id}/messages</code></li>
+</ul>
+<h2 id="frontend">frontend/</h2>
+<p>Judge Agent를 웹에서 실행/확인하기 위한 React 프론트엔드와 관련 설계 문서가 들어 있습니다.</p>
+<p>주요 파일/폴더:</p>
+<ul>
+<li><code>app/</code> — Vite + React + TypeScript UI</li>
+<li><code>app/src/components/</code> — 분석 패널, reference agent 패널, 채팅 뷰 등 UI 컴포넌트</li>
+<li><code>app/src/api/judgeClient.ts</code> — backend API client</li>
+<li><code>API_REFERENCE.md</code> — 프론트엔드 API 명세</li>
+<li><code>API_INTEGRATION_PLAN.md</code> — API 연동 계획</li>
+<li><code>DESIGN.md</code> — UI/UX 설계 문서</li>
+<li><code>CONVERSATIONAL_AGENT_FRONTEND_PLAN.md</code> — 대화형 agent 프론트엔드 계획</li>
+</ul>
+<h2 id="judge_agent">judge_agent/</h2>
+<p>Judge Agent의 핵심 분석/판단 로직입니다. Reference agent가 만든 trace를 읽고 drift, 계약 위반, 이상 징후를 탐지하며 대화형 질의응답을 제공합니다.</p>
+<p>주요 하위 모듈:</p>
+<ul>
+<li><code>analysis/</code></li>
+<li><code>analyzer.py</code> — 단일/복수 trace 분석</li>
+<li><code>detectors.py</code> — drift 및 이상 탐지 규칙</li>
+<li><code>reporter.py</code> — Markdown/JSON 리포트 생성</li>
+<li><code>tools.py</code> — 분석 보조 도구</li>
+<li><code>conversation/</code></li>
+<li><code>agent.py</code> — tool 기반/hybrid 대화형 agent</li>
+<li><code>graph.py</code> — graph 기반 대화 agent</li>
+<li><code>legacy.py</code> — 기존 deterministic chat agent</li>
+<li><code>state.py</code> — 대화 상태 저장/복원</li>
+<li><code>core/</code></li>
+<li><code>config.py</code> — 설정 로딩</li>
+<li><code>metrics.py</code> — metric 정의/계산</li>
+<li><code>schema.py</code> — 분석 결과 스키마</li>
+<li><code>session.py</code> — judge session 상태</li>
+<li><code>adapters/</code></li>
+<li><code>reference.py</code> — reference agent trace adapter</li>
+<li><code>config/</code></li>
+<li><code>app.json</code>, <code>conversation.json</code>, <code>metrics.json</code>, <code>detector_rules.json</code> 등 기본 설정</li>
+<li><code>llm/</code></li>
+<li><code>clients.py</code> — optional LLM client 생성</li>
+<li><code>tests/</code> — 핵심 기능 테스트</li>
+</ul>
+<h2 id="reference">reference/</h2>
+<p>Judge Agent가 drift를 탐지할 기준 대상(reference target)인 web log analysis agent입니다.</p>
+<p>주요 위치:</p>
+<pre><code class="language-text">
+reference/agent/weblog_agent/
+</code></pre>
+<p>주요 기능:</p>
+<ul>
+<li>web access log fixture 분석</li>
+<li>ReAct 스타일 <code>Thought -&amp;gt; Action -&amp;gt; Observation</code> 루프 시뮬레이션</li>
+<li>tool/MCP/RAG/LLM 이벤트 trace 기록</li>
+<li>drift fixture 실행 및 Markdown report 생성</li>
+<li>optional LangGraph/LangChain 구성과 호환 가능한 인터페이스 유지</li>
+</ul>
+<p>주요 파일:</p>
+<ul>
+<li><code>cli.py</code> — fixture 실행, custom analysis, chat mode CLI</li>
+<li><code>graph.py</code>, <code>langgraph_app.py</code> — graph/runtime 구성</li>
+<li><code>tools.py</code> — log parsing, metric 계산, anomaly detection 도구</li>
+<li><code>mcp.py</code>, <code>rag.py</code> — MCP/RAG context 보강</li>
+<li><code>trace.py</code> — trace event 기록</li>
+<li><code>fixtures/</code> — 샘플 access log와 baseline fixture</li>
+<li><code>README.md</code> — reference agent 상세 문서</li>
+</ul>
+<h2 id="실행-방법">실행 방법</h2>
+<p>프로젝트 루트 기준입니다.</p>
+<h3 id="api-frontend-동시-실행">API + Frontend 동시 실행</h3>
+<pre><code class="language-bash">
+./start.sh
+</code></pre>
+<p>기본 포트:</p>
+<ul>
+<li>Backend API: <code>http://localhost:19001</code></li>
+<li>Frontend UI: <code>http://localhost:29173</code></li>
+</ul>
+<p>중지:</p>
+<pre><code class="language-bash">
+./stop.sh
+</code></pre>
+<h3 id="backend-api만-실행">Backend API만 실행</h3>
+<pre><code class="language-bash">
+BACKEND_PORT=19001 python -m uvicorn judgeagent.backend.api:app \
+  --reload --host 0.0.0.0 --port 19001
+</code></pre>
+<p>필요 dependency:</p>
+<pre><code class="language-bash">
+pip install -e &#x27;.[api]&#x27;
+</code></pre>
+<h3 id="frontend만-실행">Frontend만 실행</h3>
+<pre><code class="language-bash">
+cd judgeagent/frontend/app
+npm install
+npm run dev
+</code></pre>
+<h3 id="judge-agent-cli">Judge Agent CLI</h3>
+<pre><code class="language-bash">
+# 단일 trace 분석
+python3 -m judgeagent.backend.cli analyze \
+  --trace artifacts/weblog-reference/normal-login-error-spike.jsonl
+
+# 여러 trace batch 분석
+python3 -m judgeagent.backend.cli analyze-batch \
+  --traces &#x27;artifacts/weblog-reference/*.jsonl&#x27;
+
+# 대화형 judge agent 시작
+python3 -m judgeagent.backend.cli chat \
+  --traces &#x27;artifacts/weblog-reference/*.jsonl&#x27; \
+  --mode deterministic-v2
+</code></pre>
+<p>설치 후 console script로도 실행할 수 있습니다.</p>
+<pre><code class="language-bash">
+judge-agent-simple analyze --trace artifacts/weblog-reference/normal-login-error-spike.jsonl
+</code></pre>
+<h3 id="reference-weblog-agent-cli">Reference Weblog Agent CLI</h3>
+<pre><code class="language-bash">
+# fixture 목록
+python3 -m judgeagent.reference.agent.weblog_agent.cli list-fixtures
+
+# 특정 fixture 실행
+python3 -m judgeagent.reference.agent.weblog_agent.cli run-fixture normal-login-error-spike --no-llm
+
+# 전체 fixture 실행
+python3 -m judgeagent.reference.agent.weblog_agent.cli run-all --no-llm
+</code></pre>
+<p>설치 후 console script:</p>
+<pre><code class="language-bash">
+weblog-agent run-all --no-llm
+</code></pre>
+<h2 id="출력물">출력물</h2>
+<p>실행 결과는 주로 프로젝트 루트의 <code>artifacts/</code> 아래에 저장됩니다.</p>
+<ul>
+<li><code>artifacts/weblog-reference/</code> — reference agent trace/report</li>
+<li><code>artifacts/frontend-api/reference-runs/</code> — API를 통해 실행한 reference run 결과</li>
+<li><code>artifacts/frontend-api/analyses/</code> — Judge Agent 분석 결과</li>
+<li><code>artifacts/frontend-api/judge-sessions/</code> — 대화형 judge session 상태</li>
+</ul>
+<h2 id="개발-참고">개발 참고</h2>
+<ul>
+<li>Python package root는 프로젝트 루트이며, <code>pyproject.toml</code>의 <code>[tool.setuptools.packages.find] where = [&amp;quot;.&amp;quot;]</code> 설정으로 <code>judgeagent</code> 패키지를 포함합니다.</li>
+<li>optional dependency:</li>
+<li><code>.[api]</code> — FastAPI/uvicorn API 서버</li>
+<li><code>.[agent]</code> — LangGraph/LangChain/MCP 계열 agent runtime</li>
+<li>LLM/API key는 코드에 넣지 말고 <code>.env</code> 또는 환경변수를 사용합니다.</li>
+<li><code>judge_agent/config/*.json</code>에서 detector, metric, conversation 기본 동작을 조정할 수 있습니다.</li>
+</ul>
+</body>
+</html>

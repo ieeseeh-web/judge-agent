@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API_INTEGRATION_PLAN.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/frontend/API_INTEGRATION_PLAN.md</code></div>
+<h1 id="judge-agent-frontend-api-integration-plan">Judge Agent ↔ Frontend API Integration Plan</h1>
+<h2 id="1-목적">1. 목적</h2>
+<p>현재 <code>frontend/app</code>은 mock 데이터로 Reference Agent Lab, Judge Findings, Chat Workspace를 보여준다. 실제 제품이 되려면 다음 세 런타임을 API로 연결해야 한다.</p>
+<ol>
+<li><strong>Reference Agent runtime</strong> — <code>reference_agent/weblog_agent</code> 실행, trace/report/session artifact 생성</li>
+<li><strong>Judge Agent analysis runtime</strong> — <code>simple/judge_agent_simple</code> 분석, finding/gate/score 생성</li>
+<li><strong>Conversational Judge runtime</strong> — 분석 결과를 session에 올리고 follow-up 질문 처리</li>
+</ol>
+<p>이 문서는 프론트와 에이전트가 서로 안정적으로 연동되도록 API boundary, DTO, 상태 저장, 단계별 구현 계획을 정의한다. Endpoint별 request/response 세부 형식은 <code>frontend/API_REFERENCE.md</code>를 기준으로 한다.</p>
+<h2 id="2-핵심-원칙">2. 핵심 원칙</h2>
+<ul>
+<li>Frontend는 Python 내부 파일/JSON config를 직접 읽지 않는다. 항상 API DTO만 사용한다.</li>
+<li>API는 CLI를 shell subprocess로 감싸는 방식이 아니라, 가능한 한 Python 함수/runtime을 직접 import해서 호출한다.</li>
+<li>긴 실행은 <code>queued/running/succeeded/failed</code> 상태를 갖는 run resource로 표현한다.</li>
+<li>파일 기반 artifact는 1차 MVP에서 유지하되, API response에는 DB 전환 가능한 id/path/metadata 구조로 노출한다.</li>
+<li>API key나 secret 값은 절대 response에 포함하지 않는다. <code>configured: true/false</code>만 노출한다.</li>
+<li>Reference Agent trace와 Judge Agent finding을 연결하는 canonical key는 <code>trace_path</code>와 <code>run_id</code>다.</li>
+</ul>
+<h2 id="3-권장-backend-위치">3. 권장 Backend 위치</h2>
+<pre><code class="language-text">
+simple/judge_agent_simple/api.py          # FastAPI app entrypoint
+simple/judge_agent_simple/api_models.py   # Pydantic DTO
+simple/judge_agent_simple/api_store.py    # file-backed run/session registry
+simple/judge_agent_simple/api_services.py # Reference/Judge orchestration service
+</code></pre>
+<p>왜 <code>simple/judge_agent_simple</code> 아래에 두는가:</p>
+<ul>
+<li>Judge Agent runtime과 config loader를 바로 재사용할 수 있다.</li>
+<li><code>pyproject.toml</code>의 optional dependency <code>api = [fastapi, uvicorn]</code>와 자연스럽게 연결된다.</li>
+<li>나중에 DB store로 바꿀 때 API service boundary만 유지하면 된다.</li>
+</ul>
+<p>실행 명령 후보:</p>
+<pre><code class="language-bash">
+pip install -e &#x27;.[api]&#x27;
+uvicorn simple.judge_agent_simple.api:app --reload --port 8787
+</code></pre>
+<p>Frontend <code>.env</code> 후보:</p>
+<pre><code class="language-bash">
+VITE_JUDGE_API_BASE_URL=http://localhost:8787
+</code></pre>
+<h2 id="4-전체-연동-흐름">4. 전체 연동 흐름</h2>
+<pre><code class="language-text">
+Frontend
+  │
+  ├─ GET /api/config
+  ├─ GET /api/reference/fixtures
+  │
+  ├─ POST /api/reference/runs
+  │    └─ Reference Agent executes fixture/custom/chat turn
+  │       ├─ trace_path
+  │       ├─ report_path
+  │       └─ event summary
+  │
+  ├─ POST /api/analyses
+  │    └─ Judge Agent analyzes trace_path(s)
+  │       ├─ analysis_id
+  │       ├─ summary
+  │       └─ findings
+  │
+  ├─ POST /api/judge/sessions
+  │    └─ ConversationState created from analysis
+  │
+  └─ POST /api/judge/sessions/{id}/messages
+       └─ ToolBased/Hybrid/Graph ConversationAgent handles follow-up
+</code></pre>
+<h2 id="5-resource-model">5. Resource Model</h2>
+<h2 id="5-1-reference-run">5.1 Reference Run</h2>
+<p>Reference Agent 실행 단위다. fixture run, custom analysis, chat turn을 모두 포함한다.</p>
+<pre><code class="language-ts">
+type ReferenceRun = {
+  id: string;
+  mode: &#x27;fixture&#x27; | &#x27;custom-analysis&#x27; | &#x27;chat&#x27;;
+  status: &#x27;queued&#x27; | &#x27;running&#x27; | &#x27;succeeded&#x27; | &#x27;failed&#x27;;
+  fixtureId?: string;
+  userInput?: string;
+  accessLogPath?: string;
+  useLlm: boolean;
+  tracePath?: string;
+  reportPath?: string;
+  sessionPath?: string;
+  eventCounts: Record&lt;string, number&gt;;
+  timelinePreview: ReferenceTimelineEvent[];
+  error?: ApiError;
+  createdAt: string;
+  updatedAt: string;
+};
+</code></pre>
+<h2 id="5-2-analysis">5.2 Analysis</h2>
+<p>Judge Agent 분석 결과 단위다.</p>
+<pre><code class="language-ts">
+type Analysis = {
+  id: string;
+  status: &#x27;queued&#x27; | &#x27;running&#x27; | &#x27;succeeded&#x27; | &#x27;failed&#x27;;
+  source: {
+    kind: &#x27;trace-paths&#x27; | &#x27;reference-run&#x27; | &#x27;upload&#x27;;
+    tracePaths: string[];
+    referenceRunId?: string;
+  };
+  adapter: string;
+  summary: AnalysisSummary;
+  results: AnalysisResultDto[];
+  findings: FindingDto[];
+  reportMarkdown?: string;
+  error?: ApiError;
+  createdAt: string;
+  updatedAt: string;
+};
+</code></pre>
+<h2 id="5-3-judge-session">5.3 Judge Session</h2>
+<p>대화형 Judge Agent session이다. <code>ConversationState</code>의 API-safe projection이다.</p>
+<pre><code class="language-ts">
+type JudgeSession = {
+  id: string;
+  mode: &#x27;deterministic-v2&#x27; | &#x27;hybrid&#x27; | &#x27;graph&#x27;;
+  analysisId?: string;
+  loadedTraces: string[];
+  messages: ChatMessageDto[];
+  focus: {
+    runId?: string;
+    findingId?: string;
+    metric?: string;
+  };
+  toolCalls: ToolCallDto[];
+  evidence: EvidenceDto[];
+  createdAt: string;
+  updatedAt: string;
+};
+</code></pre>
+<h2 id="6-endpoint-설계">6. Endpoint 설계</h2>
+<h2 id="6-1-system-config">6.1 System / Config</h2>
+<h3 id="get-api-health"><code>GET /api/health</code></h3>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;status&quot;: &quot;ok&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;runtime&quot;: &quot;file-backed&quot;,
+  &quot;time&quot;: &quot;2026-05-15T13:20:00Z&quot;
+}
+</code></pre>
+<h3 id="get-api-config"><code>GET /api/config</code></h3>
+<p>프론트 설정 화면과 초기 capability check에 사용한다.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;configDir&quot;: &quot;simple/config&quot;,
+  &quot;appDefaults&quot;: {
+    &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;,
+    &quot;chatMode&quot;: &quot;deterministic&quot;,
+    &quot;failOn&quot;: &quot;critical&quot;
+  },
+  &quot;supported&quot;: {
+    &quot;chatModes&quot;: [&quot;deterministic&quot;, &quot;deterministic-v2&quot;, &quot;hybrid&quot;, &quot;graph&quot;],
+    &quot;llmProviders&quot;: [&quot;auto&quot;, &quot;openai&quot;, &quot;ollama&quot;, &quot;mock&quot;, &quot;none&quot;]
+  },
+  &quot;llm&quot;: {
+    &quot;provider&quot;: &quot;ollama&quot;,
+    &quot;model&quot;: &quot;qwen3.5:latest&quot;,
+    &quot;apiKeyConfigured&quot;: false
+  },
+  &quot;metrics&quot;: {
+    &quot;count&quot;: 35
+  }
+}
+</code></pre>
+<h2 id="6-2-reference-agent-apis">6.2 Reference Agent APIs</h2>
+<h3 id="get-api-reference-fixtures"><code>GET /api/reference/fixtures</code></h3>
+<p><code>reference_agent.weblog_agent.fixtures.fixtures()</code> 기반.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;fixtures&quot;: [
+    {
+      &quot;id&quot;: &quot;normal-login-error-spike&quot;,
+      &quot;label&quot;: &quot;Normal login error spike&quot;,
+      &quot;userInput&quot;: &quot;지난 1시간 동안 /api/login 5xx 에러율을 분석해주세요&quot;,
+      &quot;accessLogPath&quot;: &quot;reference_agent/weblog_agent/fixtures/access.log&quot;,
+      &quot;fault&quot;: null
+    }
+  ]
+}
+</code></pre>
+<h3 id="post-api-reference-runs"><code>POST /api/reference/runs</code></h3>
+<p>Reference Agent fixture/custom analysis/chat turn 실행.</p>
+<p>Request — fixture:</p>
+<pre><code class="language-json">
+{
+  &quot;mode&quot;: &quot;fixture&quot;,
+  &quot;fixtureId&quot;: &quot;normal-login-error-spike&quot;,
+  &quot;useLlm&quot;: false,
+  &quot;outputDir&quot;: &quot;artifacts/frontend/reference-runs&quot;
+}
+</code></pre>
+<p>Request — custom analysis:</p>
+<pre><code class="language-json">
+{
+  &quot;mode&quot;: &quot;custom-analysis&quot;,
+  &quot;userInput&quot;: &quot;지난 1시간 동안 /api/login 5xx 에러율을 분석해주세요&quot;,
+  &quot;accessLogPath&quot;: &quot;reference_agent/weblog_agent/fixtures/access.log&quot;,
+  &quot;useLlm&quot;: false
+}
+</code></pre>
+<p>Request — chat turn:</p>
+<pre><code class="language-json">
+{
+  &quot;mode&quot;: &quot;chat&quot;,
+  &quot;sessionId&quot;: &quot;login-incident&quot;,
+  &quot;userInput&quot;: &quot;방금 결과에서 가장 의심되는 원인은?&quot;,
+  &quot;accessLogPath&quot;: &quot;reference_agent/weblog_agent/fixtures/access.log&quot;,
+  &quot;useLlm&quot;: false
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;run&quot;: {
+    &quot;id&quot;: &quot;ref_20260515_132000_normal-login-error-spike&quot;,
+    &quot;mode&quot;: &quot;fixture&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;fixtureId&quot;: &quot;normal-login-error-spike&quot;,
+    &quot;useLlm&quot;: false,
+    &quot;tracePath&quot;: &quot;artifacts/frontend/reference-runs/normal-login-error-spike.jsonl&quot;,
+    &quot;reportPath&quot;: &quot;artifacts/frontend/reference-runs/reports/normal-login-error-spike.md&quot;,
+    &quot;eventCounts&quot;: {
+      &quot;react_step&quot;: 9,
+      &quot;tool_end&quot;: 7,
+      &quot;validation_result&quot;: 1
+    },
+    &quot;timelinePreview&quot;: []
+  }
+}
+</code></pre>
+<p>Implementation note:</p>
+<ul>
+<li>1차는 sync response로 충분하다.</li>
+<li>LLM 사용 시 latency가 길어지면 Phase 2에서 background task + polling/SSE로 전환한다.</li>
+<li>기존 <code>run_fixture</code>, <code>run_analysis</code>는 직접 호출 가능하다.</li>
+<li><code>run_chat</code>은 현재 stdin loop 중심이므로 API용 <code>ChatAgent.handle_user_turn()</code> service wrapper를 별도로 만든다.</li>
+</ul>
+<h3 id="get-api-reference-runs"><code>GET /api/reference/runs</code></h3>
+<p>file-backed registry에서 최근 run 목록 반환.</p>
+<h3 id="get-api-reference-runs-run_id"><code>GET /api/reference/runs/{run_id}</code></h3>
+<p>run metadata + report excerpt 반환.</p>
+<h3 id="get-api-reference-runs-run_id-trace"><code>GET /api/reference/runs/{run_id}/trace</code></h3>
+<p>JSONL trace를 event list로 변환해 반환한다. 긴 raw trace는 pagination을 둔다.</p>
+<p>Query:</p>
+<pre><code class="language-text">
+?offset=0&amp;limit=200&amp;type=tool_end
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;runId&quot;: &quot;ref_...&quot;,
+  &quot;tracePath&quot;: &quot;...jsonl&quot;,
+  &quot;events&quot;: [
+    {&quot;index&quot;: 0, &quot;type&quot;: &quot;run_start&quot;, &quot;raw&quot;: {}}
+  ],
+  &quot;nextOffset&quot;: 200
+}
+</code></pre>
+<h2 id="6-3-judge-analysis-apis">6.3 Judge Analysis APIs</h2>
+<h3 id="post-api-analyses"><code>POST /api/analyses</code></h3>
+<p>Trace를 분석해 Analysis resource를 만든다.</p>
+<p>Request — trace paths:</p>
+<pre><code class="language-json">
+{
+  &quot;source&quot;: {
+    &quot;kind&quot;: &quot;trace-paths&quot;,
+    &quot;tracePaths&quot;: [&quot;artifacts/frontend/reference-runs/normal-login-error-spike.jsonl&quot;]
+  },
+  &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;,
+  &quot;failOn&quot;: &quot;critical&quot;
+}
+</code></pre>
+<p>Request — reference run:</p>
+<pre><code class="language-json">
+{
+  &quot;source&quot;: {
+    &quot;kind&quot;: &quot;reference-run&quot;,
+    &quot;referenceRunId&quot;: &quot;ref_20260515_132000_normal-login-error-spike&quot;
+  },
+  &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;analysis&quot;: {
+    &quot;id&quot;: &quot;ana_20260515_132030&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;summary&quot;: {
+      &quot;runCount&quot;: 1,
+      &quot;gateCounts&quot;: {&quot;pass&quot;: 0, &quot;warning&quot;: 0, &quot;block&quot;: 1},
+      &quot;severityCounts&quot;: {&quot;critical&quot;: 1, &quot;high&quot;: 1, &quot;medium&quot;: 0, &quot;low&quot;: 0},
+      &quot;topFindings&quot;: []
+    },
+    &quot;findings&quot;: []
+  }
+}
+</code></pre>
+<p>Implementation note:</p>
+<ul>
+<li>내부적으로 <code>analyze_traces(trace_paths, adapter_name=adapter)</code> 사용.</li>
+<li><code>AnalysisResult.to_dict()</code>를 API DTO로 normalize.</li>
+<li><code>markdown_report(results)</code>도 함께 생성해 report tab에서 볼 수 있게 한다.</li>
+</ul>
+<h3 id="get-api-analyses"><code>GET /api/analyses</code></h3>
+<p>최근 analysis 목록.</p>
+<h3 id="get-api-analyses-analysis_id"><code>GET /api/analyses/{analysis_id}</code></h3>
+<p>analysis detail.</p>
+<h3 id="get-api-analyses-analysis_id-findings-finding_id"><code>GET /api/analyses/{analysis_id}/findings/{finding_id}</code></h3>
+<p>finding detail + evidence.</p>
+<h2 id="6-4-judge-conversation-apis">6.4 Judge Conversation APIs</h2>
+<h3 id="post-api-judge-sessions"><code>POST /api/judge/sessions</code></h3>
+<p>Analysis를 기반으로 대화형 session 생성.</p>
+<p>Request:</p>
+<pre><code class="language-json">
+{
+  &quot;analysisId&quot;: &quot;ana_20260515_132030&quot;,
+  &quot;sessionId&quot;: &quot;weblog-drift-review&quot;,
+  &quot;mode&quot;: &quot;deterministic-v2&quot;,
+  &quot;llm&quot;: {
+    &quot;provider&quot;: &quot;none&quot;,
+    &quot;model&quot;: null
+  }
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;session&quot;: {
+    &quot;id&quot;: &quot;weblog-drift-review&quot;,
+    &quot;mode&quot;: &quot;deterministic-v2&quot;,
+    &quot;analysisId&quot;: &quot;ana_20260515_132030&quot;,
+    &quot;loadedTraces&quot;: [&quot;...jsonl&quot;],
+    &quot;messages&quot;: [],
+    &quot;focus&quot;: {&quot;findingId&quot;: &quot;JD-001&quot;, &quot;metric&quot;: &quot;validation_path_coverage&quot;}
+  }
+}
+</code></pre>
+<p>Implementation note:</p>
+<ul>
+<li><code>ConversationState(session_id)</code> 생성.</li>
+<li><code>state.analysis_results = [result.to_dict(), ...]</code> 또는 <code>ToolBasedConversationAgent.load_analysis(trace_paths)</code> 사용.</li>
+<li>session은 <code>save_conversation_state()</code>로 file-backed 저장.</li>
+</ul>
+<h3 id="post-api-judge-sessions-session_id-messages"><code>POST /api/judge/sessions/{session_id}/messages</code></h3>
+<p>사용자 turn 처리.</p>
+<p>Request:</p>
+<pre><code class="language-json">
+{
+  &quot;content&quot;: &quot;왜 block이야?&quot;,
+  &quot;context&quot;: {
+    &quot;findingId&quot;: &quot;JD-001&quot;,
+    &quot;metric&quot;: &quot;validation_path_coverage&quot;
+  }
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;message&quot;: {
+    &quot;id&quot;: &quot;msg_...&quot;,
+    &quot;role&quot;: &quot;assistant&quot;,
+    &quot;content&quot;: &quot;block의 직접 원인은 critical finding...&quot;,
+    &quot;focusedFindingId&quot;: &quot;JD-001&quot;,
+    &quot;focusedMetric&quot;: &quot;validation_path_coverage&quot;,
+    &quot;toolCalls&quot;: [
+      {
+        &quot;name&quot;: &quot;explain_gate&quot;,
+        &quot;status&quot;: &quot;success&quot;,
+        &quot;summary&quot;: &quot;block 1개, warning 0개&quot;
+      }
+    ]
+  },
+  &quot;session&quot;: {}
+}
+</code></pre>
+<p>Implementation note:</p>
+<ul>
+<li>mode에 따라 <code>ToolBasedConversationAgent</code>, <code>HybridConversationAgent</code>, <code>GraphConversationAgent</code> 생성.</li>
+<li><code>agent.handle_user_turn(content)</code> 호출.</li>
+<li><code>state.tool_calls[-N:]</code>, <code>state.focus</code>, <code>state.evidence</code>를 response에 포함.</li>
+</ul>
+<h3 id="get-api-judge-sessions"><code>GET /api/judge/sessions</code></h3>
+<p>file-backed conversation session list.</p>
+<h3 id="get-api-judge-sessions-session_id"><code>GET /api/judge/sessions/{session_id}</code></h3>
+<p>session detail.</p>
+<h3 id="get-api-judge-sessions-session_id-stream"><code>GET /api/judge/sessions/{session_id}/stream</code></h3>
+<p>Phase 2. SSE streaming. MVP에서는 제외 가능.</p>
+<h2 id="7-api-store-설계">7. API Store 설계</h2>
+<p>MVP는 file-backed registry를 사용한다.</p>
+<pre><code class="language-text">
+artifacts/frontend-api/
+  reference-runs/
+    registry.json
+    traces/*.jsonl
+    reports/*.md
+  analyses/
+    registry.json
+    ana_*.json
+    ana_*.md
+  judge-sessions/
+    *.conversation.json
+</code></pre>
+<p><code>api_store.py</code> 책임:</p>
+<ul>
+<li>id 생성</li>
+<li>registry read/write</li>
+<li>path resolve</li>
+<li>artifact existence check</li>
+<li>API-safe serialization</li>
+</ul>
+<p>DB 전환 시 테이블 후보:</p>
+<table>
+<thead><tr><th>Resource</th><th>Table</th></tr></thead>
+<tbody>
+<tr><td>ReferenceRun</td><td><code>reference_agent_runs</code></td></tr>
+<tr><td>TraceEvent</td><td><code>trace_events</code></td></tr>
+<tr><td>Analysis</td><td><code>judge_analyses</code></td></tr>
+<tr><td>Finding</td><td><code>judge_findings</code></td></tr>
+<tr><td>JudgeSession</td><td><code>judge_sessions</code></td></tr>
+<tr><td>ChatMessage</td><td><code>judge_messages</code></td></tr>
+<tr><td>ToolCall</td><td><code>judge_tool_calls</code></td></tr>
+<tr><td>Evidence</td><td><code>judge_evidence</code></td></tr>
+</tbody>
+</table>
+<h2 id="8-frontend-변경-계획">8. Frontend 변경 계획</h2>
+<p>현재 <code>frontend/app/src/api/judgeClient.ts</code>는 mock export만 제공한다. 다음 단계에서 실제 client로 분리한다.</p>
+<pre><code class="language-text">
+src/api/
+  client.ts          # fetch wrapper, error handling
+  referenceApi.ts    # fixtures/runs/trace
+  analysisApi.ts     # analyses/findings
+  sessionApi.ts      # judge sessions/messages
+  mockData.ts        # story/demo fallback
+</code></pre>
+<p>환경변수:</p>
+<pre><code class="language-ts">
+const API_BASE_URL = import.meta.env.VITE_JUDGE_API_BASE_URL ?? &#x27;http://localhost:8787&#x27;;
+</code></pre>
+<p>상태 구조:</p>
+<pre><code class="language-text">
+state/
+  useReferenceRuns.ts
+  useAnalyses.ts
+  useJudgeSession.ts
+</code></pre>
+<p>1차는 React hooks + local component state로 충분하다. 상태가 복잡해지면 Zustand를 도입한다.</p>
+<h2 id="9-error-contract">9. Error Contract</h2>
+<p>모든 실패는 같은 형태로 반환한다.</p>
+<pre><code class="language-json">
+{
+  &quot;error&quot;: {
+    &quot;code&quot;: &quot;REFERENCE_FIXTURE_NOT_FOUND&quot;,
+    &quot;message&quot;: &quot;Unknown fixture: foo&quot;,
+    &quot;detail&quot;: {
+      &quot;fixtureId&quot;: &quot;foo&quot;
+    }
+  }
+}
+</code></pre>
+<p>권장 error code:</p>
+<table>
+<thead><tr><th>Code</th><th>Case</th></tr></thead>
+<tbody>
+<tr><td><code>BAD_REQUEST</code></td><td>request validation 실패</td></tr>
+<tr><td><code>REFERENCE_FIXTURE_NOT_FOUND</code></td><td>fixture id 없음</td></tr>
+<tr><td><code>REFERENCE_RUN_FAILED</code></td><td>reference runtime 실패</td></tr>
+<tr><td><code>TRACE_NOT_FOUND</code></td><td>trace path 없음</td></tr>
+<tr><td><code>ANALYSIS_FAILED</code></td><td>judge analysis 실패</td></tr>
+<tr><td><code>SESSION_NOT_FOUND</code></td><td>session id 없음</td></tr>
+<tr><td><code>LLM_UNAVAILABLE</code></td><td>hybrid/graph LLM provider unavailable</td></tr>
+</tbody>
+</table>
+<h2 id="10-보안-안전-고려">10. 보안/안전 고려</h2>
+<ul>
+<li>Path input은 repo/artifacts allowlist 안으로 제한한다.</li>
+<li>API key/env secret은 response에 포함하지 않는다.</li>
+<li>임의 shell command 실행 API를 만들지 않는다.</li>
+<li>Reference Agent 실행은 정해진 fixture/custom analysis function만 허용한다.</li>
+<li>업로드 파일은 크기 제한과 <code>.jsonl</code> 확장자 검증을 둔다.</li>
+<li>CORS는 local dev origin만 허용한다.</li>
+</ul>
+<p>MVP allowlist 후보:</p>
+<pre><code class="language-text">
+reference_agent/weblog_agent/fixtures/
+reference_agent/weblog_agent/traces/
+reference_agent/weblog_agent/reports/
+artifacts/
+</code></pre>
+<h2 id="11-구현-단계">11. 구현 단계</h2>
+<h2 id="phase-a-api-skeleton">Phase A — API Skeleton</h2>
+<p>작업:</p>
+<ul>
+<li>[ ] <code>api_models.py</code> Pydantic DTO 추가</li>
+<li>[ ] <code>api_store.py</code> file-backed registry 추가</li>
+<li>[ ] <code>api_services.py</code> orchestration skeleton 추가</li>
+<li>[ ] <code>api.py</code> FastAPI app 추가</li>
+<li>[ ] <code>/api/health</code>, <code>/api/config</code>, <code>/api/reference/fixtures</code>, <code>/api/metrics</code> 구현</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] <code>python3 -m unittest discover -s simple/judge_agent_simple/tests</code></li>
+<li>[ ] <code>uvicorn simple.judge_agent_simple.api:app --port 8787</code></li>
+<li>[ ] <code>curl http://localhost:8787/api/health</code></li>
+</ul>
+<h2 id="phase-b-reference-agent-api">Phase B — Reference Agent API</h2>
+<p>작업:</p>
+<ul>
+<li>[ ] fixture run API 구현</li>
+<li>[ ] custom analysis API 구현</li>
+<li>[ ] reference run registry 저장</li>
+<li>[ ] trace event count/timeline preview 생성</li>
+<li>[ ] trace pagination endpoint 구현</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] <code>POST /api/reference/runs</code> with <code>normal-login-error-spike</code></li>
+<li>[ ] trace/report 파일 생성 확인</li>
+<li>[ ] <code>GET /api/reference/runs/{id}/trace</code> event 반환 확인</li>
+</ul>
+<h2 id="phase-c-judge-analysis-api">Phase C — Judge Analysis API</h2>
+<p>작업:</p>
+<ul>
+<li>[ ] <code>POST /api/analyses</code> 구현</li>
+<li>[ ] referenceRunId → tracePath resolve</li>
+<li>[ ] <code>analyze_traces()</code> 호출</li>
+<li>[ ] summary/finding DTO 생성</li>
+<li>[ ] markdown report artifact 저장</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] reference run trace를 analysis로 연결</li>
+<li>[ ] block/warning/pass summary 확인</li>
+<li>[ ] finding evidence가 frontend DTO로 노출되는지 확인</li>
+</ul>
+<h2 id="phase-d-judge-session-api">Phase D — Judge Session API</h2>
+<p>작업:</p>
+<ul>
+<li>[ ] <code>POST /api/judge/sessions</code> 구현</li>
+<li>[ ] <code>POST /api/judge/sessions/{id}/messages</code> 구현</li>
+<li>[ ] deterministic-v2 우선 연결</li>
+<li>[ ] hybrid/graph mode optional 연결</li>
+<li>[ ] session list/detail 구현</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] session 생성</li>
+<li>[ ] “왜 block이야?” 요청/응답</li>
+<li>[ ] <code>toolCalls</code>, <code>focus</code>, <code>evidence</code> response 확인</li>
+</ul>
+<h2 id="phase-e-frontend-real-api-연결">Phase E — Frontend Real API 연결</h2>
+<p>작업:</p>
+<ul>
+<li>[ ] mock <code>judgeClient.ts</code>를 real client + mock fallback으로 분리</li>
+<li>[ ] Reference Agent Lab에서 fixture 목록 API 사용</li>
+<li>[ ] <code>Run reference agent</code> 버튼을 <code>POST /api/reference/runs</code>에 연결</li>
+<li>[ ] <code>Judge this trace</code> 버튼을 <code>POST /api/analyses</code>에 연결</li>
+<li>[ ] ChatPanel을 <code>POST /api/judge/sessions/{id}/messages</code>에 연결</li>
+<li>[ ] loading/error/empty state 추가</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] <code>npm run build</code></li>
+<li>[ ] browser에서 full flow 수동 검증</li>
+</ul>
+<h2 id="phase-f-streaming-background-jobs">Phase F — Streaming / Background Jobs</h2>
+<p>MVP 이후.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] long-running run을 background job으로 전환</li>
+<li>[ ] <code>GET /api/jobs/{id}</code> 또는 run resource polling 추가</li>
+<li>[ ] SSE endpoint로 chat response/tool call stream 제공</li>
+</ul>
+<h2 id="12-mvp-api-우선순위">12. MVP API 우선순위</h2>
+<p>가장 먼저 구현할 최소 endpoint:</p>
+<ol>
+<li><code>GET /api/health</code></li>
+<li><code>GET /api/config</code></li>
+<li><code>GET /api/reference/fixtures</code></li>
+<li><code>POST /api/reference/runs</code> fixture mode only</li>
+<li><code>POST /api/analyses</code></li>
+<li><code>POST /api/judge/sessions</code></li>
+<li><code>POST /api/judge/sessions/{session_id}/messages</code></li>
+</ol>
+<p>이 7개만 있으면 현재 mock 프론트의 핵심 flow를 실제 runtime으로 교체할 수 있다.</p>
+<h2 id="13-프론트와-api-간-이벤트-매핑">13. 프론트와 API 간 이벤트 매핑</h2>
+<table>
+<thead><tr><th>UI Action</th><th>API Call</th><th>Backend Runtime</th></tr></thead>
+<tbody>
+<tr><td>화면 초기화</td><td><code>GET /api/config</code>, <code>GET /api/reference/fixtures</code></td><td>config loader, fixtures registry</td></tr>
+<tr><td>Run reference agent</td><td><code>POST /api/reference/runs</code></td><td><code>WebLogAnalysisAgent.run()</code> / fixture wrapper</td></tr>
+<tr><td>View trace timeline</td><td><code>GET /api/reference/runs/{id}/trace</code></td><td>JSONL parser</td></tr>
+<tr><td>Judge this trace</td><td><code>POST /api/analyses</code></td><td><code>analyze_traces()</code></td></tr>
+<tr><td>Create chat review</td><td><code>POST /api/judge/sessions</code></td><td><code>ConversationState</code> + selected agent</td></tr>
+<tr><td>Ask question</td><td><code>POST /api/judge/sessions/{id}/messages</code></td><td><code>handle_user_turn()</code></td></tr>
+</tbody>
+</table>
+<h2 id="14-완료-기준">14. 완료 기준</h2>
+<p>API 연동 1차 완료 기준:</p>
+<ul>
+<li>Reference Agent fixture를 UI 버튼으로 실행할 수 있다.</li>
+<li>생성된 trace/report 경로가 UI에 표시된다.</li>
+<li>해당 trace를 Judge Agent가 분석한다.</li>
+<li>findings가 mock이 아니라 API response에서 렌더링된다.</li>
+<li>사용자가 “왜 block이야?”를 입력하면 실제 <code>ToolBasedConversationAgent</code> 응답이 표시된다.</li>
+<li>Python tests와 frontend build가 통과한다.</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DEVELOPMENT_GUIDE.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/DEVELOPMENT_GUIDE.md</code></div>
+<h1 id="judge-agent-개발-가이드">Judge Agent 개발 가이드</h1>
+<p>이 문서는 현재 <code>judgeagent/</code> 패키지에 구현되어 있는 내용을 기준으로 작성한 개발 가이드입니다. 과거의 <code>simple/DEVELOPMENT_GUIDE.md</code>, <code>full/DEVELOPMENT_GUIDE.md</code>, <code>test/agent/DEVELOPMENT_GUIDE.md</code>에 있던 계획성 문서를 현재 코드 구조에 맞춰 재정리했습니다.</p>
+<h2 id="1-현재-목표">1. 현재 목표</h2>
+<p>Judge Agent는 reference agent의 실행 trace를 읽고 agent drift를 탐지하는 분석/대화형 검증 도구입니다.</p>
+<p>현재 구현은 다음 흐름을 중심으로 동작합니다.</p>
+<ol>
+<li>Reference Weblog Agent가 fixture 또는 custom input을 실행한다.</li>
+<li>실행 과정에서 JSONL trace와 Markdown report를 생성한다.</li>
+<li>Judge Agent가 trace를 <code>SimpleAgentRun</code>으로 정규화한다.</li>
+<li>rule-based detector가 drift finding을 생성한다.</li>
+<li>score/gate를 계산하고 Markdown/JSON report를 만든다.</li>
+<li>CLI, FastAPI, React UI에서 분석 결과를 확인하고 후속 질문을 한다.</li>
+</ol>
+<h2 id="2-패키지-구조">2. 패키지 구조</h2>
+<pre><code class="language-text">
+judgeagent/
+├── backend/                    # FastAPI API와 judge-agent-simple CLI
+├── frontend/                   # React/Vite UI와 프론트엔드 문서
+├── judge_agent/                # Judge Agent 핵심 분석/대화 로직
+│   ├── adapters/               # trace adapter
+│   ├── analysis/               # analyzer, detectors, reporter
+│   ├── config/                 # JSON 설정 파일
+│   ├── conversation/           # 대화형 Judge Agent
+│   ├── core/                   # schema, config, metrics, session
+│   ├── llm/                    # optional LLM client
+│   └── tests/                  # Python tests
+└── reference/agent/weblog_agent/ # 평가 대상 reference agent
+</code></pre>
+<h2 id="3-실행-환경">3. 실행 환경</h2>
+<h3 id="python">Python</h3>
+<ul>
+<li>Python 3.9 이상</li>
+<li>기본 trace 분석은 표준 라이브러리 중심으로 동작</li>
+<li>API 서버는 optional dependency 필요</li>
+<li>hybrid/graph/LLM 관련 기능은 optional dependency와 환경변수 필요</li>
+</ul>
+<p>설치 예:</p>
+<pre><code class="language-bash">
+# 개발 설치
+pip install -e .
+
+# API 서버 포함
+pip install -e &#x27;.[api]&#x27;
+
+# LangGraph/LangChain/MCP 계열 optional runtime 포함
+pip install -e &#x27;.[agent]&#x27;
+</code></pre>
+<h3 id="node-js">Node.js</h3>
+<p>Frontend는 Vite + React + TypeScript입니다.</p>
+<pre><code class="language-bash">
+cd judgeagent/frontend/app
+npm install
+npm run dev
+</code></pre>
+<h2 id="4-로컬-실행">4. 로컬 실행</h2>
+<p>프로젝트 루트에서 실행합니다.</p>
+<h3 id="backend-frontend-동시-실행">Backend + Frontend 동시 실행</h3>
+<pre><code class="language-bash">
+./start.sh
+</code></pre>
+<p>기본 포트:</p>
+<ul>
+<li>Backend API: <code>http://localhost:19001</code></li>
+<li>Frontend UI: <code>http://localhost:29173</code></li>
+</ul>
+<p>중지:</p>
+<pre><code class="language-bash">
+./stop.sh
+</code></pre>
+<h3 id="backend-api만-실행">Backend API만 실행</h3>
+<pre><code class="language-bash">
+BACKEND_PORT=19001 python -m uvicorn judgeagent.backend.api:app \
+  --reload --host 0.0.0.0 --port 19001
+</code></pre>
+<h3 id="frontend만-실행">Frontend만 실행</h3>
+<pre><code class="language-bash">
+cd judgeagent/frontend/app
+npm run dev
+</code></pre>
+<h2 id="5-cli-사용법">5. CLI 사용법</h2>
+<h3 id="reference-weblog-agent-실행">Reference Weblog Agent 실행</h3>
+<p>Reference agent는 trace와 report를 생성하는 평가 대상 agent입니다.</p>
+<pre><code class="language-bash">
+# fixture 목록 확인
+python3 -m judgeagent.reference.agent.weblog_agent.cli list-fixtures
+
+# 특정 fixture 실행
+python3 -m judgeagent.reference.agent.weblog_agent.cli run-fixture normal-login-error-spike --no-llm
+
+# 모든 fixture 실행
+python3 -m judgeagent.reference.agent.weblog_agent.cli run-all --no-llm
+</code></pre>
+<p>설치 후 console script:</p>
+<pre><code class="language-bash">
+weblog-agent run-all --no-llm
+</code></pre>
+<h3 id="judge-agent-분석">Judge Agent 분석</h3>
+<pre><code class="language-bash">
+# 단일 trace 분석
+python3 -m judgeagent.backend.cli analyze \
+  --trace artifacts/weblog-reference/normal-login-error-spike.jsonl
+
+# Markdown/JSON 출력 저장
+python3 -m judgeagent.backend.cli analyze \
+  --trace artifacts/weblog-reference/normal-login-error-spike.jsonl \
+  --output artifacts/simple-judge/report.md \
+  --json artifacts/simple-judge/findings.json
+
+# 여러 trace batch 분석
+python3 -m judgeagent.backend.cli analyze-batch \
+  --traces &#x27;artifacts/weblog-reference/*.jsonl&#x27;
+</code></pre>
+<p>설치 후 console script:</p>
+<pre><code class="language-bash">
+judge-agent-simple analyze --trace artifacts/weblog-reference/normal-login-error-spike.jsonl
+</code></pre>
+<h3 id="대화형-judge-agent">대화형 Judge Agent</h3>
+<pre><code class="language-bash">
+python3 -m judgeagent.backend.cli chat \
+  --traces &#x27;artifacts/weblog-reference/*.jsonl&#x27; \
+  --mode deterministic-v2
+</code></pre>
+<p>지원 mode:</p>
+<ul>
+<li><code>deterministic</code> — legacy deterministic chat agent</li>
+<li><code>deterministic-v2</code> — tool 기반 conversation state 사용</li>
+<li><code>hybrid</code> — deterministic tool 결과 + optional LLM synthesis</li>
+<li><code>graph</code> — optional LangGraph runtime, 미설치 시 fallback 가능</li>
+</ul>
+<p>대화 명령:</p>
+<ul>
+<li><code>/summary</code> — 전체 요약</li>
+<li><code>/findings</code> — finding 목록/우선순위</li>
+<li><code>/runs</code> — run 목록</li>
+<li><code>/compare</code> — run 비교</li>
+<li><code>/exit</code> 또는 <code>/quit</code> — 종료</li>
+</ul>
+<h2 id="6-api-개발">6. API 개발</h2>
+<p>API 진입점은 <code>judgeagent/backend/api.py</code>입니다.</p>
+<p>현재 주요 endpoint:</p>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td><code>GET</code></td><td><code>/api/health</code></td><td>API 상태 확인</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/config</code></td><td>config snapshot 반환</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/metrics</code></td><td>metric 목록 반환</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/reference/fixtures</code></td><td>reference fixture 목록</td></tr>
+<tr><td><code>POST</code></td><td><code>/api/reference/runs</code></td><td>reference agent 실행</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/reference/runs</code></td><td>reference run 목록</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/reference/runs/{run_id}</code></td><td>reference run 상세</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/reference/runs/{run_id}/trace</code></td><td>trace event pagination</td></tr>
+<tr><td><code>POST</code></td><td><code>/api/analyses</code></td><td>Judge analysis 생성</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/analyses</code></td><td>analysis 목록</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/analyses/{analysis_id}</code></td><td>analysis 상세</td></tr>
+<tr><td><code>POST</code></td><td><code>/api/judge/sessions</code></td><td>대화형 judge session 생성</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/judge/sessions</code></td><td>session 목록</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/judge/sessions/{session_id}</code></td><td>session 상세</td></tr>
+<tr><td><code>POST</code></td><td><code>/api/judge/sessions/{session_id}/messages</code></td><td>follow-up message 처리</td></tr>
+</tbody>
+</table>
+<p>비즈니스 로직은 <code>judgeagent/backend/api_services.py</code>에 모여 있고, 파일 저장은 <code>api_store.py</code>의 <code>ApiStore</code>가 담당합니다.</p>
+<h2 id="7-데이터-저장-위치">7. 데이터 저장 위치</h2>
+<p>현재 구현은 database 없이 file-backed store를 사용합니다.</p>
+<pre><code class="language-text">
+artifacts/
+├── weblog-reference/                  # reference CLI 실행 결과
+└── frontend-api/
+    ├── reference-runs/                # API reference run trace/report
+    ├── analyses/                      # 분석 JSON/Markdown report
+    └── judge-sessions/                # 대화형 session JSON
+</code></pre>
+<p>주의:</p>
+<ul>
+<li><code>artifacts/</code>는 fixture 재현이나 데모용 산출물입니다.</li>
+<li>대량 실행 시 파일 수가 빠르게 늘어납니다.</li>
+<li>민감정보를 trace/report에 남기지 않도록 reference agent의 sanitizer 정책을 유지해야 합니다.</li>
+</ul>
+<h2 id="8-핵심-schema">8. 핵심 schema</h2>
+<p>현재 core schema는 <code>judgeagent/judge_agent/core/schema.py</code>에 dataclass로 정의되어 있습니다.</p>
+<h3 id="simpleagentrun">SimpleAgentRun</h3>
+<pre><code class="language-python">
+@dataclass
+class SimpleAgentRun:
+    run_id: str
+    framework: str = &quot;reference-weblog&quot;
+    architecture: Optional[str] = None
+    agent_name: Optional[str] = None
+    agent_version: Optional[str] = None
+    graph_version: Optional[str] = None
+    user_input: Optional[str] = None
+    instructions: Dict[str, Any] = field(default_factory=dict)
+    components: Dict[str, Any] = field(default_factory=dict)
+    events: List[SimpleEvent] = field(default_factory=list)
+    raw_events: List[Dict[str, Any]] = field(default_factory=list)
+    validation_results: List[Dict[str, Any]] = field(default_factory=list)
+    final_output: Optional[str] = None
+    artifacts: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+</code></pre>
+<h3 id="finding">Finding</h3>
+<pre><code class="language-python">
+@dataclass
+class Finding:
+    id: str
+    category: str
+    metric: str
+    severity: str
+    confidence: float
+    evidence: List[str]
+    expected: str
+    actual: str
+    recommendation: str
+    location: Dict[str, Any] = field(default_factory=dict)
+</code></pre>
+<h3 id="analysisresult">AnalysisResult</h3>
+<p><code>AnalysisResult</code>는 <code>run</code>, <code>findings</code>, <code>score</code>, <code>gate</code>를 묶습니다.</p>
+<ul>
+<li><code>score</code>: 0~100</li>
+<li><code>gate</code>: <code>pass</code>, <code>warning</code>, <code>block</code></li>
+</ul>
+<h2 id="9-분석-파이프라인">9. 분석 파이프라인</h2>
+<p>구현 위치:</p>
+<ul>
+<li>Adapter: <code>judgeagent/judge_agent/adapters/reference.py</code></li>
+<li>Analyzer: <code>judgeagent/judge_agent/analysis/analyzer.py</code></li>
+<li>Detector: <code>judgeagent/judge_agent/analysis/detectors.py</code></li>
+<li>Reporter: <code>judgeagent/judge_agent/analysis/reporter.py</code></li>
+</ul>
+<p>현재 흐름:</p>
+<pre><code class="language-text">
+JSONL trace path
+  -&gt; ReferenceAgentJsonlAdapter
+  -&gt; SimpleAgentRun
+  -&gt; ReferenceWebLogDetector.detect()
+  -&gt; score_findings()
+  -&gt; gate_for()
+  -&gt; AnalysisResult
+  -&gt; Markdown/JSON report
+</code></pre>
+<p>현재 detector는 reference weblog trace에 특화되어 있습니다. 범용 LangSmith/LangChain adapter는 아직 현재 코드의 중심 구현이 아니므로 새 기능 개발 시 reference weblog adapter와 schema를 먼저 유지해야 합니다.</p>
+<h2 id="10-현재-detector-규칙">10. 현재 detector 규칙</h2>
+<p><code>ReferenceWebLogDetector</code>가 실행하는 rule:</p>
+<ol>
+<li><code>output_contract</code></li>
+<ul>
+<li>final output이 필수 Markdown section을 포함하는지 확인</li>
+<ol>
+<li><code>validation_path</code></li>
+<ul>
+<li><code>validate_findings</code> node와 <code>validation_result</code>가 실행됐는지 확인</li>
+<ol>
+<li><code>wrong_endpoint</code></li>
+<ul>
+<li>사용자 요청 target endpoint와 tool argument/metric path가 일치하는지 확인</li>
+<ol>
+<li><code>parse_error_handling</code></li>
+<ul>
+<li>높은 parse error 비율을 무시하고 성공 report를 만들었는지 확인</li>
+<ol>
+<li><code>metric_consistency</code></li>
+<ul>
+<li>metric이 실제 tool output에서 나온 값인지 확인</li>
+<ol>
+<li><code>rag_mcp_presence</code></li>
+<ul>
+<li>RAG runbook과 MCP service context 사용 여부 확인</li>
+<ol>
+<li><code>chat_context</code></li>
+<ul>
+<li>chat follow-up 응답이 이전 분석 context에 grounded 되어 있는지 확인</li>
+</ul>
+</ol>
+</ul>
+</ol>
+</ul>
+</ol>
+</ul>
+</ol>
+</ul>
+</ol>
+</ul>
+</ol>
+</ul>
+</ol>
+<p>Detector 설정은 <code>judgeagent/judge_agent/config/detector_rules.json</code>에 있습니다.</p>
+<h2 id="11-설정-파일">11. 설정 파일</h2>
+<p><code>judgeagent/judge_agent/config/</code> 아래 JSON 파일이 런타임 기본값을 제어합니다.</p>
+<ul>
+<li><code>app.json</code></li>
+<li>기본 adapter, session dir, chat mode, fail threshold, LLM provider</li>
+<li><code>conversation.json</code></li>
+<li>severity rank, intent keyword, 기본 chat command, fallback message</li>
+<li><code>detector_rules.json</code></li>
+<li>reference weblog detector 규칙과 threshold</li>
+<li><code>metrics.json</code></li>
+<li>UI/API에서 노출할 metric 정의</li>
+<li><code>llm_profiles.json</code></li>
+<li>LLM provider/model/profile 설정</li>
+<li><code>database_tables.md</code></li>
+<li>향후 DB 전환용 테이블 설계 문서</li>
+</ul>
+<p>설정 로딩 코드는 <code>judgeagent/judge_agent/core/config.py</code>에 있습니다.</p>
+<h2 id="12-reference-agent-개발">12. Reference Agent 개발</h2>
+<p>Reference agent 구현 위치:</p>
+<pre><code class="language-text">
+judgeagent/reference/agent/weblog_agent/
+</code></pre>
+<p>현재 역할:</p>
+<ul>
+<li>web access log fixture 분석</li>
+<li>ReAct-style trace 생성</li>
+<li>tool/MCP/RAG/LLM event 기록</li>
+<li>deterministic fallback 제공</li>
+<li>fault injection fixture로 drift scenario 생성</li>
+</ul>
+<p>주요 event type:</p>
+<ul>
+<li><code>run_start</code>, <code>run_end</code></li>
+<li><code>agent_components</code></li>
+<li><code>instruction_snapshot</code></li>
+<li><code>react_step</code></li>
+<li><code>node_start</code>, <code>node_end</code>, <code>edge_selected</code></li>
+<li><code>tool_start</code>, <code>tool_end</code>, <code>tool_error</code></li>
+<li><code>mcp_start</code>, <code>mcp_end</code>, <code>mcp_error</code></li>
+<li><code>llm_start</code>, <code>llm_end</code>, <code>llm_error</code>, <code>llm_skipped</code></li>
+<li><code>validation_result</code></li>
+<li><code>final_output</code></li>
+<li><code>chat_*</code></li>
+</ul>
+<p>Reference agent를 수정할 때는 detector가 기대하는 event 이름과 field를 깨지 않도록 해야 합니다.</p>
+<h2 id="13-frontend-개발">13. Frontend 개발</h2>
+<p>Frontend 위치:</p>
+<pre><code class="language-text">
+judgeagent/frontend/app/
+</code></pre>
+<p>주요 기술:</p>
+<ul>
+<li>React</li>
+<li>TypeScript</li>
+<li>Vite</li>
+<li>Ant Design</li>
+</ul>
+<p>주요 파일:</p>
+<ul>
+<li><code>src/App.tsx</code> — 화면 composition과 API orchestration</li>
+<li><code>src/api/judgeClient.ts</code> — backend API 호출 client</li>
+<li><code>src/components/ReferenceAgentPanel.tsx</code> — reference run 실행 UI</li>
+<li><code>src/components/FindingsPanel.tsx</code> — finding 표시</li>
+<li><code>src/components/MetricsPanel.tsx</code> — metric/gate 요약</li>
+<li><code>src/components/ReferenceChatView.tsx</code> — 대화형 judge session UI</li>
+<li><code>src/types/judge.ts</code> — frontend type 정의</li>
+</ul>
+<p>Build 확인:</p>
+<pre><code class="language-bash">
+cd judgeagent/frontend/app
+npm run build
+</code></pre>
+<h2 id="14-llm-연동">14. LLM 연동</h2>
+<p>LLM은 필수 dependency가 아닙니다. 기본 분석/detector는 LLM 없이 동작해야 합니다.</p>
+<p>LLM 사용 지점:</p>
+<ul>
+<li>Reference agent의 request parsing/report generation 보조</li>
+<li>Judge conversation의 <code>hybrid</code>/<code>graph</code> mode 응답 synthesis</li>
+</ul>
+<p>원칙:</p>
+<ul>
+<li>API key는 <code>.env</code> 또는 환경변수로만 주입합니다.</li>
+<li>trace에는 secret을 기록하지 않습니다.</li>
+<li>LLM 미설정 시 deterministic fallback이 동작해야 합니다.</li>
+<li>LLM 관련 실패는 가능하면 trace에 <code>llm_error</code> 또는 fallback 근거로 남깁니다.</li>
+</ul>
+<p>CLI 옵션 예:</p>
+<pre><code class="language-bash">
+python3 -m judgeagent.backend.cli chat \
+  --mode hybrid \
+  --llm-provider openai-compatible \
+  --llm-base-url http://localhost:1234/v1 \
+  --llm-api-key local-dev-key
+</code></pre>
+<h2 id="15-테스트와-검증">15. 테스트와 검증</h2>
+<p>현재 환경에서 최소 검증:</p>
+<pre><code class="language-bash">
+python3 -m compileall -q judgeagent
+</code></pre>
+<p>pytest가 설치되어 있다면:</p>
+<pre><code class="language-bash">
+python3 -m pytest -q judgeagent/judge_agent/tests \
+  judgeagent/reference/agent/weblog_agent/tests
+</code></pre>
+<p>Frontend 검증:</p>
+<pre><code class="language-bash">
+cd judgeagent/frontend/app
+npm run build
+</code></pre>
+<p>PR/커밋 전 권장 smoke test:</p>
+<pre><code class="language-bash">
+python3 -m judgeagent.reference.agent.weblog_agent.cli run-fixture normal-login-error-spike --no-llm
+python3 -m judgeagent.backend.cli analyze --trace artifacts/weblog-reference/normal-login-error-spike.jsonl
+python3 -m compileall -q judgeagent
+</code></pre>
+<h2 id="16-새-detector-추가-방법">16. 새 detector 추가 방법</h2>
+<ol>
+<li><code>judgeagent/judge_agent/config/detector_rules.json</code>에 threshold/상수 추가</li>
+<li><code>ReferenceWebLogDetector</code>에 새 method 추가</li>
+<li><code>detect()</code>의 <code>checks</code> 목록에 method 등록</li>
+<li>finding에는 다음을 반드시 포함</li>
+<ul>
+<li>category</li>
+<li>metric</li>
+<li>severity</li>
+<li>confidence</li>
+<li>evidence</li>
+<li>expected</li>
+<li>actual</li>
+<li>recommendation</li>
+<ol>
+<li>관련 fixture 또는 static trace 추가</li>
+<li><code>judgeagent/judge_agent/tests/</code>에 regression test 추가</li>
+</ol>
+</ul>
+</ol>
+<p>Finding ID는 detector 실행 후 <code>JD-001</code>, <code>JD-002</code> 형태로 재정렬됩니다. 개별 detector method 내부 ID에 의존하지 마세요.</p>
+<h2 id="17-새-api-추가-방법">17. 새 API 추가 방법</h2>
+<ol>
+<li>요청/응답 shape가 필요하면 <code>backend/api_models.py</code>에 dataclass 또는 validator 추가</li>
+<li>실제 동작은 <code>backend/api_services.py</code>에 함수로 구현</li>
+<li>route는 <code>backend/api.py</code>에 얇게 추가</li>
+<li>file-backed 저장이 필요하면 <code>backend/api_store.py</code>에 path helper 추가</li>
+<li>frontend 호출은 <code>frontend/app/src/api/judgeClient.ts</code>에 추가</li>
+<li>frontend type은 <code>frontend/app/src/types/judge.ts</code>에 추가</li>
+</ol>
+<p>API error는 <code>ApiError</code>를 사용해 code/message/details/status_code를 일관되게 반환합니다.</p>
+<h2 id="18-새-fixture-추가-방법">18. 새 fixture 추가 방법</h2>
+<ol>
+<li><code>reference/agent/weblog_agent/fixtures.py</code>에 fixture 정의 추가</li>
+<li>필요하면 <code>fixtures/access.log</code> 또는 별도 log 파일 추가</li>
+<li>fault injection이 필요하면 graph/agent 실행 경로에 fault 처리 추가</li>
+<li><code>weblog-agent run-fixture &amp;lt;fixture-id&amp;gt; --no-llm</code>로 trace 생성 확인</li>
+<li><code>judge-agent-simple analyze --trace &amp;lt;trace&amp;gt;</code>로 기대 finding 확인</li>
+<li>detector threshold 또는 expected category가 바뀌면 tests와 문서도 갱신</li>
+</ol>
+<h2 id="19-개발-원칙">19. 개발 원칙</h2>
+<ul>
+<li>현재 구현의 기준 trace format은 <code>reference-weblog-jsonl</code>입니다.</li>
+<li>detector는 가능한 한 결정적(rule-based)이어야 합니다.</li>
+<li>LLM은 보조 역할이며, LLM이 없어도 CI/smoke test가 가능해야 합니다.</li>
+<li>final report의 주장은 trace/tool output으로 검증 가능해야 합니다.</li>
+<li>external action, secret, API key는 trace/report에 남기지 않습니다.</li>
+<li>파일 저장소 기반 구현이므로 path traversal과 임의 파일 읽기/쓰기 위험을 계속 점검해야 합니다.</li>
+<li>frontend/API/schema 변경은 함께 업데이트합니다.</li>
+</ul>
+<h2 id="20-현재-한계와-다음-작업-후보">20. 현재 한계와 다음 작업 후보</h2>
+<p>현재 구현 기준 한계:</p>
+<ul>
+<li>adapter는 reference weblog JSONL 중심입니다.</li>
+<li>LangSmith/LangChain/LangGraph 범용 trace adapter는 아직 주요 구현이 아닙니다.</li>
+<li>file-backed store라 동시성/보존 정책/검색 기능이 제한적입니다.</li>
+<li>API path allowlist와 artifact cleanup 정책이 더 강화될 필요가 있습니다.</li>
+<li>pytest dependency가 설치되지 않은 환경에서는 test suite를 바로 실행할 수 없습니다.</li>
+</ul>
+<p>다음 작업 후보:</p>
+<ol>
+<li><code>artifacts/</code> 정리/보존 정책과 <code>.gitignore</code> 정책 재검토</li>
+<li>API trace path allowlist 강화</li>
+<li>LangSmith export adapter 추가</li>
+<li>detector별 regression fixture 확장</li>
+<li>frontend build/CI workflow 추가</li>
+<li>file-backed store를 SQLite 또는 lightweight DB로 전환</li>
+</ol>
+</body>
+</html>

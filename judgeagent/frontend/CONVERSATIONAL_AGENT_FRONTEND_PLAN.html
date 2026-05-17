@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CONVERSATIONAL_AGENT_FRONTEND_PLAN.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/frontend/CONVERSATIONAL_AGENT_FRONTEND_PLAN.md</code></div>
+<h1 id="conversational-judge-agent-frontend-development-plan">Conversational Judge Agent Frontend Development Plan</h1>
+<h2 id="1-목적">1. 목적</h2>
+<p><code>simple/judge_agent_simple</code>의 대화형 Judge Agent와 <code>reference_agent/weblog_agent</code> reference target agent를 하나의 웹 UI에서 다룬다. 사용자는 Reference Agent를 실행해 trace/report를 생성하거나 기존 trace를 업로드/선택하고, Judge Agent로 분석한 뒤 채팅으로 drift 원인, 근거, 수정 우선순위, run 비교를 질의할 수 있어야 한다.</p>
+<p>디자인 기준은 <code>frontend/DESIGN.md</code>를 따른다. 실제 Agent ↔ Frontend 연동을 위한 상세 API 계약과 구현 순서는 <code>frontend/API_INTEGRATION_PLAN.md</code>, endpoint별 request/response는 <code>frontend/API_REFERENCE.md</code>를 따른다.</p>
+<p>핵심 방향:</p>
+<ul>
+<li>cream canvas 기반의 조용한 technical UI</li>
+<li>얇은 hairline border 중심의 flat card layout</li>
+<li>shadow 없는 정보 밀도 높은 화면</li>
+<li>code/evidence 영역만 dark olive-charcoal surface 사용</li>
+<li>metric/finding/status는 pill chip, badge, callout banner로 표현</li>
+<li>대화형 에이전트이지만 “챗봇 앱”보다 “reference run → trace → judge review”가 이어지는 drift review workspace처럼 설계</li>
+<li>Reference Agent의 ReAct loop, Tool/RAG/MCP/Validation trace를 Judge Agent 분석과 나란히 볼 수 있게 설계</li>
+</ul>
+<h2 id="2-추천-기술-스택">2. 추천 기술 스택</h2>
+<p>현재 repo에는 frontend app skeleton이 없으므로 1차 구현은 다음 구성을 추천한다.</p>
+<table>
+<thead><tr><th>Layer</th><th>Recommendation</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>App</td><td>Vite + React + TypeScript</td><td>빠른 MVP, repo에 가볍게 추가 가능</td></tr>
+<tr><td>Styling</td><td>CSS Modules 또는 plain CSS variables</td><td><code>DESIGN.md</code> token을 그대로 CSS variable로 매핑하기 쉬움</td></tr>
+<tr><td>State</td><td>Zustand 또는 React reducer</td><td>session, selected run/finding, chat messages 관리가 단순함</td></tr>
+<tr><td>API</td><td>FastAPI backend 추가</td><td>Python Judge Agent runtime을 직접 호출하기 좋음</td></tr>
+<tr><td>Streaming</td><td>SSE 우선, WebSocket은 Phase 2</td><td>agent response streaming 확장 가능</td></tr>
+<tr><td>Test</td><td>Vitest + React Testing Library</td><td>컴포넌트/상태 테스트</td></tr>
+<tr><td>E2E</td><td>Playwright</td><td>업로드→분석→채팅 플로우 검증</td></tr>
+</tbody>
+</table>
+<p>초기에는 Vite가 가장 단순하다. Next.js는 routing/API를 한 번에 관리하기 좋지만, Python agent runtime과 붙을 예정이라 프론트는 정적 SPA + Python API 분리가 더 깔끔하다.</p>
+<h2 id="3-제품-구조">3. 제품 구조</h2>
+<pre><code class="language-text">
+frontend/
+  DESIGN.md
+  CONVERSATIONAL_AGENT_FRONTEND_PLAN.md
+  app/                         # Phase 1에서 생성 예정
+    package.json
+    index.html
+    src/
+      main.tsx
+      App.tsx
+      styles/
+        tokens.css
+        global.css
+      components/
+        AppShell.tsx
+        PrimaryNav.tsx
+        Sidebar.tsx
+        ReferenceAgentPanel.tsx
+        ReferenceRunTimeline.tsx
+        ChatPanel.tsx
+        FindingsPanel.tsx
+        MetricCard.tsx
+        EvidenceBlock.tsx
+        TraceUploadCard.tsx
+        RunCompareTable.tsx
+      api/
+        judgeClient.ts
+      state/
+        judgeStore.ts
+      types/
+        judge.ts
+</code></pre>
+<p>Python backend 후보:</p>
+<pre><code class="language-text">
+simple/judge_agent_simple/api.py          # FastAPI app
+simple/judge_agent_simple/api_models.py   # Pydantic DTO
+simple/judge_agent_simple/api_store.py    # file-backed registry, DB 교체 예정 지점
+simple/judge_agent_simple/api_services.py # Reference/Judge orchestration
+</code></pre>
+<p>상세 endpoint, DTO, error contract, file-backed store 설계는 <code>frontend/API_INTEGRATION_PLAN.md</code>에 정의한다.</p>
+<h2 id="4-핵심-사용자-시나리오">4. 핵심 사용자 시나리오</h2>
+<h3 id="4-1-trace-분석-시작">4.1 Trace 분석 시작</h3>
+<ol>
+<li>사용자가 JSONL trace 파일을 업로드하거나 path/glob을 입력한다.</li>
+<li>adapter, mode, LLM provider를 선택한다.</li>
+<li><code>Analyze traces</code> 버튼을 누른다.</li>
+<li>backend가 <code>analyze_traces</code> 또는 conversation agent <code>load_analysis</code>를 실행한다.</li>
+<li>UI는 run count, gate count, severity count, top findings를 보여준다.</li>
+</ol>
+<h3 id="4-2-대화형-분석">4.2 대화형 분석</h3>
+<ol>
+<li>사용자가 “왜 block이야?”, “JD-001 근거”, “수정 우선순위 알려줘”를 입력한다.</li>
+<li>backend가 <code>ToolBasedConversationAgent</code>, <code>HybridConversationAgent</code>, 또는 <code>GraphConversationAgent</code>를 호출한다.</li>
+<li>UI는 assistant response와 함께 사용된 tool, evidence, focused metric을 표시한다.</li>
+<li>finding/focused metric이 바뀌면 우측 detail panel이 동기화된다.</li>
+</ol>
+<h3 id="4-3-finding-drilldown">4.3 Finding drilldown</h3>
+<ol>
+<li>사용자가 finding card를 클릭한다.</li>
+<li>우측 detail panel에 expected/actual/evidence/recommendation이 열린다.</li>
+<li><code>Ask about this finding</code> CTA가 채팅 입력에 context chip을 추가한다.</li>
+</ol>
+<h3 id="4-4-run-비교">4.4 Run 비교</h3>
+<ol>
+<li>사용자가 <code>Compare runs</code> tab을 선택한다.</li>
+<li>block/warning/pass, score, finding count 기준으로 정렬된 table을 보여준다.</li>
+<li>run row 클릭 시 해당 run의 top findings를 보여준다.</li>
+</ol>
+<h3 id="4-5-reference-agent-실행-및-judge-분석">4.5 Reference Agent 실행 및 Judge 분석</h3>
+<ol>
+<li>사용자가 Reference Agent 화면에서 fixture를 선택한다. 예: <code>normal-login-error-spike</code>, validation skipped drift, metric hallucination drift.</li>
+<li>LLM 사용 여부를 선택한다. 기본은 CI 재현성을 위해 <code>--no-llm</code> deterministic fallback이다.</li>
+<li><code>Run reference agent</code> 버튼을 누르면 backend가 <code>reference_agent.weblog_agent.cli</code>와 동일한 runtime을 호출한다.</li>
+<li>UI는 생성된 report, JSONL trace, ReAct timeline, Tool/RAG/MCP/Validation 이벤트를 표시한다.</li>
+<li>사용자가 <code>Judge this trace</code>를 누르면 해당 trace가 Judge Agent 분석으로 전달된다.</li>
+<li>Judge Agent 결과와 Reference Agent 실행 과정을 한 화면에서 연결해 본다.</li>
+</ol>
+<h3 id="4-6-reference-agent-interactive-chat-review">4.6 Reference Agent Interactive Chat Review</h3>
+<ol>
+<li>사용자가 reference chat session을 시작한다.</li>
+<li>첫 질문으로 웹로그 분석 요청을 입력한다.</li>
+<li>Reference Agent가 child ReAct analysis trace와 chat trace를 생성한다.</li>
+<li>이후 “방금 결과에서 가장 의심되는 원인은?” 같은 follow-up을 입력한다.</li>
+<li>Judge Agent는 reference chat trace의 <code>chat_context_built</code>, <code>chat_analysis_invoked</code>, <code>chat_response_generated</code> 이벤트를 분석해 chat grounding drift를 탐지한다.</li>
+</ol>
+<h2 id="5-화면-설계">5. 화면 설계</h2>
+<h2 id="5-1-app-shell">5.1 App Shell</h2>
+<p><code>DESIGN.md</code>의 cream canvas와 primary-nav를 따른다.</p>
+<pre><code class="language-text">
+┌─────────────────────────────────────────────────────────────┐
+│ Judge Agent · Drift Review             Search  Settings CTA │ 56px primary-nav
+├─────────────────────────────────────────────────────────────┤
+│ Sessions · Traces · Metrics · Config           New analysis │ 40px sub-nav-strip
+├───────────────┬─────────────────────────────┬───────────────┤
+│ Sidebar       │ Main Review Workspace        │ Detail Panel   │
+│ Sessions      │ Summary / Chat / Findings    │ Evidence       │
+│ Filters       │                             │ Recommendation│
+└───────────────┴─────────────────────────────┴───────────────┘
+</code></pre>
+<p>디자인 규칙:</p>
+<ul>
+<li>body background: <code>{colors.canvas}</code> cream</li>
+<li>nav/subnav: radius none, shadow 없음</li>
+<li>panel/card: white/warm-white + 1px hairline</li>
+<li>section 분리는 decorative divider 대신 eyebrow + 1px hairline</li>
+<li>primary CTA는 한 화면에 하나만 yellow-orange</li>
+</ul>
+<h2 id="5-2-dashboard-review-home">5.2 Dashboard / Review Home</h2>
+<p>구성:</p>
+<ul>
+<li>Hero summary card</li>
+<li>“Review agent drift from trace evidence”</li>
+<li>run count, block/warning/pass badges</li>
+<li>primary CTA: <code>Analyze traces</code></li>
+<li>3-up metric tiles</li>
+<li>Gate status</li>
+<li>Severity distribution</li>
+<li>Top priority finding</li>
+<li>Recent sessions list</li>
+<li>Config status callout</li>
+<li>active mode, provider, model, config directory</li>
+</ul>
+<p>디자인:</p>
+<ul>
+<li><code>product-card</code>, <code>feature-tile</code> 패턴 사용</li>
+<li>severity는 pill chip으로 표시</li>
+<li>critical/high는 saturated background가 아니라 border/text emphasis 위주로 표현</li>
+</ul>
+<h2 id="5-3-chat-workspace">5.3 Chat Workspace</h2>
+<p>주요 영역:</p>
+<ul>
+<li>left sidebar: sessions, loaded traces, filter chips</li>
+<li>center: chat transcript + input</li>
+<li>right detail: focused finding/evidence/tool calls</li>
+</ul>
+<p>Chat message 디자인:</p>
+<table>
+<thead><tr><th>Message</th><th>Treatment</th></tr></thead>
+<tbody>
+<tr><td>user</td><td>cream canvas 위 flat bubble, hairline border</td></tr>
+<tr><td>assistant</td><td>warm-white doc-card 느낌, evidence footnote 포함</td></tr>
+<tr><td>tool call</td><td>compact inline-code chip + expandable row</td></tr>
+<tr><td>fallback notice</td><td><code>banner-tip-purple</code> 또는 <code>banner-tip-blue</code></td></tr>
+<tr><td>warning/block</td><td><code>banner-tip-red</code> callout, 단 과도한 alert color 금지</td></tr>
+</tbody>
+</table>
+<p>입력 영역:</p>
+<ul>
+<li><code>text-input</code> style</li>
+<li>placeholder examples: <code>왜 block이야?</code>, <code>JD-001 근거</code>, <code>run 비교</code></li>
+<li>context chips: selected run/finding/metric</li>
+<li>send button은 primary CTA 대신 secondary/tertiary를 기본으로 두고, 새 분석 시작 버튼만 primary 유지</li>
+</ul>
+<h2 id="5-4-findings-panel">5.4 Findings Panel</h2>
+<p>카드 목록:</p>
+<pre><code class="language-text">
+JD-001 validation_path_coverage        CRITICAL · LangGraph Flow
+Expected: validate_findings node and validation_result events...
+Actual: Validation path was missing or explicitly skipped.
+[Evidence 3] [Ask] [Fix priority]
+</code></pre>
+<p>디자인:</p>
+<ul>
+<li><code>product-card</code>보다 조밀한 <code>doc-card</code> 변형</li>
+<li>severity pill은 inverted chip보다 hairline badge 우선</li>
+<li>metric category는 <code>badge-uppercase</code></li>
+<li>recommendation은 green callout이 아니라 normal body + icon 정도로 절제</li>
+</ul>
+<h2 id="5-5-evidence-trace-detail">5.5 Evidence / Trace Detail</h2>
+<p>증거는 <code>code-block</code>과 <code>inline-code</code>를 적극 사용한다.</p>
+<ul>
+<li>raw event snippet</li>
+<li>tool_start/tool_end pair</li>
+<li>validation_result</li>
+<li>final_output excerpt</li>
+</ul>
+<p>디자인:</p>
+<ul>
+<li>evidence body card 안에 dark code block</li>
+<li>code block만 유일한 dark elevated surface</li>
+<li>JSON은 monospace, 13px 전후</li>
+<li>긴 evidence는 collapsed accordion</li>
+</ul>
+<h2 id="5-6-reference-agent-lab">5.6 Reference Agent Lab</h2>
+<p>Reference Agent는 Judge Agent의 분석 대상이므로 별도 lab 화면을 둔다.</p>
+<p>주요 영역:</p>
+<ul>
+<li>fixture selector: 정상/드리프트 scenario 선택</li>
+<li>run options: <code>no_llm</code>, LLM provider/model, access log path, session id</li>
+<li>run status: queued/running/succeeded/failed</li>
+<li>generated artifacts: trace JSONL, markdown report, session JSON</li>
+<li>ReAct timeline: Thought/Action/Observation step list</li>
+<li>context panels: RAG runbook, MCP service context, validation result</li>
+<li>CTA: <code>Judge this trace</code></li>
+</ul>
+<p>디자인:</p>
+<ul>
+<li>전체는 <code>doc-card</code> 기반 technical workspace</li>
+<li>ReAct timeline은 hairline row divider만 사용</li>
+<li>raw trace excerpt는 <code>code-block</code> dark surface 사용</li>
+<li>Tool/RAG/MCP/Validation 이벤트는 <code>badge-uppercase</code> + inline-code chip으로 표현</li>
+<li>정상 fixture와 drift fixture를 색으로 과하게 나누지 않고 pill label과 copy로 구분</li>
+</ul>
+<h2 id="5-7-config-model-settings">5.7 Config / Model Settings</h2>
+<p>파일 기반 config를 보여주고 편집 가능성은 Phase 2로 미룬다.</p>
+<p>표시 항목:</p>
+<ul>
+<li>active config dir: <code>JUDGE_CONFIG_DIR</code> 또는 bundled <code>simple/config</code></li>
+<li>app defaults: adapter, session_dir, chat_mode, fail_on</li>
+<li>LLM provider profile: provider, base_url, default_model</li>
+<li>metric registry count</li>
+<li>detector thresholds</li>
+</ul>
+<p>디자인:</p>
+<ul>
+<li>settings는 doc-sidebar + doc-card 문서형 레이아웃</li>
+<li>값은 inline-code chip으로 표시</li>
+<li>API key는 절대 노출하지 않고 configured/not configured만 표시</li>
+</ul>
+<h2 id="6-디자인-토큰-매핑-초안">6. 디자인 토큰 매핑 초안</h2>
+<p><code>frontend/app/src/styles/tokens.css</code> 후보:</p>
+<pre><code class="language-css">
+:root {
+  --color-canvas: #eeefe9;
+  --color-surface-card: #ffffff;
+  --color-surface-doc: #fcfcfa;
+  --color-surface-soft: #e5e7e0;
+  --color-surface-dark: #252820;
+  --color-ink: #252820;
+  --color-body: #4f5348;
+  --color-mute: #74786d;
+  --color-hairline: #c9cbbb;
+  --color-hairline-soft: #dedfd6;
+  --color-primary: #f5b53f;
+  --color-primary-pressed: #e4a332;
+  --color-on-primary: #252820;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --space-section: 80px;
+}
+</code></pre>
+<p>주의:</p>
+<ul>
+<li>실제 color token 값은 <code>DESIGN.md</code>에서 명시된 값만 확정하고, 누락 값은 구현 시 한 번 더 추출/보정한다.</li>
+<li>shadow token은 만들지 않는다.</li>
+</ul>
+<h2 id="7-backend-api-계획">7. Backend API 계획</h2>
+<p>CLI만으로는 프론트와 연동하기 어렵기 때문에 FastAPI backend를 추가한다. 이 섹션은 요약이며, 실제 구현 기준은 <code>frontend/API_INTEGRATION_PLAN.md</code>다.</p>
+<h3 id="7-1-endpoint-초안">7.1 Endpoint 초안</h3>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td><code>/api/health</code></td><td>backend 상태 확인</td></tr>
+<tr><td>GET</td><td><code>/api/config</code></td><td>app/config/llm profile/metric count 조회</td></tr>
+<tr><td>GET</td><td><code>/api/reference/fixtures</code></td><td>Reference Agent fixture/scenario 목록</td></tr>
+<tr><td>POST</td><td><code>/api/reference/runs</code></td><td>Reference Agent run 또는 chat turn 실행</td></tr>
+<tr><td>GET</td><td><code>/api/reference/runs</code></td><td>Reference Agent run 목록</td></tr>
+<tr><td>GET</td><td><code>/api/reference/runs/{id}</code></td><td>Reference Agent run metadata/report 조회</td></tr>
+<tr><td>GET</td><td><code>/api/reference/runs/{id}/trace</code></td><td>생성된 JSONL trace 조회</td></tr>
+<tr><td>POST</td><td><code>/api/analyses</code></td><td>trace path, uploaded trace, 또는 reference run trace 분석</td></tr>
+<tr><td>POST</td><td><code>/api/judge/sessions</code></td><td>conversation session 생성</td></tr>
+<tr><td>GET</td><td><code>/api/judge/sessions</code></td><td>session 목록</td></tr>
+<tr><td>GET</td><td><code>/api/judge/sessions/{id}</code></td><td>session state 조회</td></tr>
+<tr><td>POST</td><td><code>/api/judge/sessions/{id}/messages</code></td><td>user turn 처리 후 assistant response 반환</td></tr>
+<tr><td>GET</td><td><code>/api/judge/sessions/{id}/stream</code></td><td>Phase 2 streaming response</td></tr>
+<tr><td>GET</td><td><code>/api/metrics</code></td><td>metric registry 조회</td></tr>
+<tr><td>GET</td><td><code>/api/findings/{id}</code></td><td>finding detail 조회</td></tr>
+</tbody>
+</table>
+<h3 id="7-2-dto-초안">7.2 DTO 초안</h3>
+<pre><code class="language-ts">
+type Gate = &#x27;pass&#x27; | &#x27;warning&#x27; | &#x27;block&#x27;;
+type Severity = &#x27;low&#x27; | &#x27;medium&#x27; | &#x27;high&#x27; | &#x27;critical&#x27;;
+
+type AnalysisSummary = {
+  sessionId: string;
+  runCount: number;
+  gateCounts: Record&lt;Gate, number&gt;;
+  severityCounts: Record&lt;Severity, number&gt;;
+  topFindings: Finding[];
+};
+
+type ReferenceRun = {
+  id: string;
+  fixture?: string;
+  mode: &#x27;fixture&#x27; | &#x27;custom-analysis&#x27; | &#x27;chat&#x27;;
+  status: &#x27;queued&#x27; | &#x27;running&#x27; | &#x27;succeeded&#x27; | &#x27;failed&#x27;;
+  tracePath?: string;
+  reportPath?: string;
+  eventCounts: Record&lt;string, number&gt;;
+};
+
+type ChatMessage = {
+  id: string;
+  role: &#x27;user&#x27; | &#x27;assistant&#x27; | &#x27;tool&#x27;;
+  content: string;
+  createdAt: string;
+  toolCalls?: ToolCall[];
+  focusedFindingId?: string;
+  focusedMetric?: string;
+};
+</code></pre>
+<h2 id="8-구현-phase">8. 구현 Phase</h2>
+<h2 id="phase-0-product-ui-spec-정리">Phase 0 — Product/UI Spec 정리</h2>
+<p>목표: 구현 전 화면/데이터 계약을 고정한다.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] <code>DESIGN.md</code> token을 CSS variable 후보로 정리</li>
+<li>[ ] 주요 화면 wireframe 확정</li>
+<li>[ ] API DTO 초안 확정</li>
+<li>[ ] Judge Agent CLI runtime과 API runtime 재사용 경계 정의</li>
+<li>[ ] Reference Agent run/chat runtime을 API에서 호출하는 경계 정의</li>
+</ul>
+<p>산출물:</p>
+<ul>
+<li><code>frontend/CONVERSATIONAL_AGENT_FRONTEND_PLAN.md</code></li>
+<li><code>frontend/app/src/styles/tokens.css</code> 초안</li>
+<li>API contract 문서 또는 OpenAPI skeleton</li>
+</ul>
+<h2 id="phase-1-frontend-skeleton">Phase 1 — Frontend Skeleton</h2>
+<p>목표: mock data 기반으로 화면을 먼저 만든다.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] Vite React TypeScript app 생성</li>
+<li>[ ] global layout / nav / sub-nav 구현</li>
+<li>[ ] design token CSS 적용</li>
+<li>[ ] Dashboard page 구현</li>
+<li>[ ] Chat workspace shell 구현</li>
+<li>[ ] Reference Agent Lab shell 구현</li>
+<li>[ ] mock reference runs/findings/session data 연결</li>
+<li>[ ] responsive 3-column → single-column collapse 구현</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] <code>npm run build</code></li>
+<li>[ ] component smoke tests</li>
+<li>[ ] screenshot 확인</li>
+</ul>
+<h2 id="phase-2-python-api-backend">Phase 2 — Python API Backend</h2>
+<p>목표: 프론트가 실제 Judge Agent runtime과 통신한다.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] <code>simple/judge_agent_simple/api.py</code> FastAPI 추가</li>
+<li>[ ] <code>api_models.py</code>, <code>api_store.py</code>, <code>api_services.py</code> 추가</li>
+<li>[ ] <code>/api/health</code>, <code>/api/config</code>, <code>/api/metrics</code> 구현</li>
+<li>[ ] <code>/api/reference/fixtures</code>, <code>/api/reference/runs</code> 구현</li>
+<li>[ ] <code>/api/analyses</code> 구현</li>
+<li>[ ] <code>/api/judge/sessions</code>, <code>/api/judge/sessions/{id}/messages</code> 구현</li>
+<li>[ ] CORS/local dev 설정</li>
+<li>[ ] error response 표준화</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] Python unit tests</li>
+<li>[ ] curl/API smoke tests</li>
+<li>[ ] frontend에서 실제 analyze 호출 성공</li>
+</ul>
+<h2 id="phase-3-reference-agent-integration">Phase 3 — Reference Agent Integration</h2>
+<p>목표: Reference Agent를 UI에서 실행하고 생성 trace를 Judge Agent 분석으로 넘긴다.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] fixture 목록 조회/선택 UI 연결</li>
+<li>[ ] reference run 실행 API 연결</li>
+<li>[ ] generated trace/report artifact 표시</li>
+<li>[ ] ReAct timeline 렌더링</li>
+<li>[ ] Tool/RAG/MCP/Validation event detail 표시</li>
+<li>[ ] <code>Judge this trace</code> 버튼으로 analyze flow 연결</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] <code>run-all --no-llm</code>에 해당하는 reference fixture 실행 가능</li>
+<li>[ ] 생성 trace가 Judge Agent 분석으로 연결됨</li>
+<li>[ ] validation skipped / metric hallucination drift fixture가 UI에서 식별됨</li>
+</ul>
+<h2 id="phase-4-conversation-integration">Phase 4 — Conversation Integration</h2>
+<p>목표: 대화형 agent를 UI에서 실제로 사용한다.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] deterministic-v2 mode 연결</li>
+<li>[ ] hybrid mode/provider/model 선택 연결</li>
+<li>[ ] chat message 전송/응답 렌더링</li>
+<li>[ ] focused finding/metric 동기화</li>
+<li>[ ] tool call/evidence accordion 표시</li>
+<li>[ ] fallback/LLM unavailable banner 처리</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] “왜 block이야?” 응답 확인</li>
+<li>[ ] “JD-001 근거” evidence 표시 확인</li>
+<li>[ ] “run 비교” table 표시 확인</li>
+</ul>
+<h2 id="phase-5-trace-upload-session-persistence">Phase 5 — Trace Upload &amp; Session Persistence</h2>
+<p>목표: 실제 사용 가능한 review workflow 완성.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] JSONL upload 지원</li>
+<li>[ ] path/glob 입력 지원</li>
+<li>[ ] session 목록/재개 지원</li>
+<li>[ ] recent sessions sidebar</li>
+<li>[ ] loaded traces display</li>
+<li>[ ] local storage fallback 또는 backend session persistence</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] 업로드→분석→채팅 full flow</li>
+<li>[ ] 브라우저 reload 후 session 복구</li>
+</ul>
+<h2 id="phase-6-polish-technical-seminar-demo">Phase 6 — Polish &amp; Technical Seminar Demo</h2>
+<p>목표: 세미나/데모용 완성도 확보.</p>
+<p>작업:</p>
+<ul>
+<li>[ ] empty/loading/error states</li>
+<li>[ ] sample trace quick-start button</li>
+<li>[ ] responsive QA</li>
+<li>[ ] accessibility check</li>
+<li>[ ] Playwright E2E</li>
+<li>[ ] demo script 작성</li>
+</ul>
+<p>검증:</p>
+<ul>
+<li>[ ] <code>npm run build</code></li>
+<li>[ ] <code>npm run test</code></li>
+<li>[ ] <code>python3 -m unittest discover -s simple/judge_agent_simple/tests</code></li>
+<li>[ ] Playwright smoke test</li>
+</ul>
+<h2 id="9-mvp-scope">9. MVP Scope</h2>
+<p>MVP에 포함:</p>
+<ul>
+<li>Reference Agent fixture 실행 및 generated trace/report 확인</li>
+<li>trace path/glob 입력</li>
+<li>analyze 실행</li>
+<li>summary/gate/severity/top findings 표시</li>
+<li>deterministic-v2 chat</li>
+<li>finding detail/evidence/recommendation panel</li>
+<li>config read-only view</li>
+<li><code>DESIGN.md</code> 기반 cream/hairline/card UI</li>
+</ul>
+<p>MVP에서 제외:</p>
+<ul>
+<li>사용자 인증</li>
+<li>multi-user collaboration</li>
+<li>DB persistence</li>
+<li>config 웹 편집</li>
+<li>full streaming response</li>
+<li>full LangGraph visualization beyond Reference Agent timeline</li>
+<li>production deployment pipeline</li>
+</ul>
+<h2 id="10-향후-db-연동-고려">10. 향후 DB 연동 고려</h2>
+<p><code>simple/config/database_tables.md</code>의 table candidates와 맞춰 frontend data model을 설계한다.</p>
+<p>DB화 우선순위:</p>
+<ol>
+<li>reference agent runs / generated artifacts / trace event index</li>
+<li>sessions / messages / tool calls / evidence</li>
+<li>metric specs</li>
+<li>detector rule sets / thresholds</li>
+<li>LLM provider profiles</li>
+<li>user/team/workspace settings</li>
+</ol>
+<p>Frontend는 처음부터 API DTO를 통해서만 데이터를 받도록 하고, config JSON 파일을 직접 import하지 않는다. 이렇게 하면 JSON file-backed API에서 DB-backed API로 전환해도 UI 변경이 최소화된다.</p>
+<h2 id="11-리스크와-대응">11. 리스크와 대응</h2>
+<table>
+<thead><tr><th>Risk</th><th>대응</th></tr></thead>
+<tbody>
+<tr><td>CLI 중심 runtime이라 request/response API 경계가 애매함</td><td>FastAPI wrapper에서 Judge Agent session state와 Reference Agent run artifact를 명시적으로 관리</td></tr>
+<tr><td>LLM response 시간이 길어질 수 있음</td><td>Phase 1은 non-streaming, Phase 2 이후 SSE 추가</td></tr>
+<tr><td>evidence JSON이 길어 UI가 복잡해짐</td><td>accordion + dark code block + excerpt 우선</td></tr>
+<tr><td>DESIGN.md token 일부 값이 미정</td><td>CSS variable 초안 작성 후 실제 화면에서 보정</td></tr>
+<tr><td>config/DB 전환 가능성</td><td>frontend는 API DTO만 의존</td></tr>
+</tbody>
+</table>
+<h2 id="12-권장-다음-작업">12. 권장 다음 작업</h2>
+<ol>
+<li><code>frontend/app</code> Vite React TypeScript skeleton 생성</li>
+<li><code>tokens.css</code> / <code>global.css</code> 작성</li>
+<li>mock data로 Dashboard + Reference Agent Lab + Chat Workspace 구현</li>
+<li><code>frontend/API_INTEGRATION_PLAN.md</code> 기준으로 FastAPI skeleton 작성</li>
+<li>Reference Agent run API → Judge analyses API → judge session/message API 순서로 연결</li>
+</ol>
+<p>추천 시작 명령:</p>
+<pre><code class="language-bash">
+cd frontend
+npm create vite@latest app -- --template react-ts
+cd app
+npm install
+npm run dev
+</code></pre>
+<p>그 다음 <code>DESIGN.md</code> 기반 CSS token과 layout component부터 구현한다.</p>
+</body>
+</html>

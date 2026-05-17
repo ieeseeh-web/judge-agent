@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API_REFERENCE.md</title>
+  <style>:root { color-scheme: light; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2937; background: #fff; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin-top: 1.8em; color: #111827; }
+h1 { border-bottom: 1px solid #e5e7eb; padding-bottom: .35em; }
+h2 { border-bottom: 1px solid #f3f4f6; padding-bottom: .25em; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+pre { background: #0f172a; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; }
+code { background: #f3f4f6; color: #b91c1c; padding: .12em .3em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 16px; color: #4b5563; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f9fafb; }
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+.metadata { color: #6b7280; font-size: .9em; margin-bottom: 2em; }</style>
+</head>
+<body>
+  <div class="metadata">Generated from <code>judgeagent/frontend/API_REFERENCE.md</code></div>
+<h1 id="judge-agent-frontend-api-reference">Judge Agent Frontend API Reference</h1>
+<p>Base URL for local development:</p>
+<pre><code class="language-text">
+http://localhost:8787
+</code></pre>
+<p>Frontend environment variable:</p>
+<pre><code class="language-bash">
+VITE_JUDGE_API_BASE_URL=http://localhost:8787
+</code></pre>
+<p>This API connects three runtimes:</p>
+<ol>
+<li>Reference Web Log ReAct Agent — produces trace/report artifacts.</li>
+<li>Simple Judge Agent analyzer — converts traces into findings, scores, and gates.</li>
+<li>Conversational Judge Agent — answers follow-up questions over analysis state.</li>
+</ol>
+<h2 id="conventions">Conventions</h2>
+<ul>
+<li>All request and response bodies are JSON unless noted.</li>
+<li>Timestamps are Unix seconds in MVP responses.</li>
+<li>File paths are returned as strings and are restricted to repository/artifact locations by backend policy.</li>
+<li>Secrets are never returned. LLM credentials are represented only by <code>configured</code> flags.</li>
+<li>Long-running jobs are synchronous in MVP, but resources already expose <code>status</code> so background execution can be added later.</li>
+</ul>
+<h2 id="error-response">Error Response</h2>
+<pre><code class="language-json">
+{
+  &quot;error&quot;: {
+    &quot;code&quot;: &quot;TRACE_NOT_FOUND&quot;,
+    &quot;message&quot;: &quot;Trace file not found&quot;,
+    &quot;detail&quot;: {&quot;tracePath&quot;: &quot;...&quot;}
+  }
+}
+</code></pre>
+<p>Common codes:</p>
+<table>
+<thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>BAD_REQUEST</code></td><td>Invalid request payload</td></tr>
+<tr><td><code>REFERENCE_FIXTURE_NOT_FOUND</code></td><td>Unknown reference fixture id</td></tr>
+<tr><td><code>REFERENCE_RUN_FAILED</code></td><td>Reference agent execution failed</td></tr>
+<tr><td><code>REFERENCE_RUN_NOT_FOUND</code></td><td>Run id does not exist in registry</td></tr>
+<tr><td><code>TRACE_NOT_FOUND</code></td><td>Trace artifact does not exist</td></tr>
+<tr><td><code>ANALYSIS_FAILED</code></td><td>Judge analysis failed</td></tr>
+<tr><td><code>ANALYSIS_NOT_FOUND</code></td><td>Analysis id does not exist</td></tr>
+<tr><td><code>SESSION_NOT_FOUND</code></td><td>Judge session id does not exist</td></tr>
+<tr><td><code>LLM_UNAVAILABLE</code></td><td>Requested LLM provider is unavailable</td></tr>
+</tbody>
+</table>
+<h2 id="get-api-health">GET <code>/api/health</code></h2>
+<p>Returns backend health.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;status&quot;: &quot;ok&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;runtime&quot;: &quot;file-backed&quot;
+}
+</code></pre>
+<h2 id="get-api-config">GET <code>/api/config</code></h2>
+<p>Returns API-safe runtime configuration.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;configDir&quot;: &quot;simple/config&quot;,
+  &quot;appDefaults&quot;: {
+    &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;,
+    &quot;sessionDir&quot;: &quot;artifacts/simple-judge/sessions&quot;,
+    &quot;chatMode&quot;: &quot;deterministic&quot;,
+    &quot;failOn&quot;: &quot;critical&quot;
+  },
+  &quot;supported&quot;: {
+    &quot;chatModes&quot;: [&quot;deterministic&quot;, &quot;deterministic-v2&quot;, &quot;hybrid&quot;, &quot;graph&quot;],
+    &quot;llmProviders&quot;: [&quot;auto&quot;, &quot;openai&quot;, &quot;ollama&quot;, &quot;mock&quot;, &quot;none&quot;]
+  },
+  &quot;llmProfiles&quot;: {
+    &quot;defaultProvider&quot;: &quot;auto&quot;,
+    &quot;defaultModel&quot;: &quot;gpt-4o-mini&quot;
+  },
+  &quot;metrics&quot;: {&quot;count&quot;: 35}
+}
+</code></pre>
+<h2 id="get-api-metrics">GET <code>/api/metrics</code></h2>
+<p>Returns drift metric registry metadata.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;metrics&quot;: [
+    {
+      &quot;name&quot;: &quot;validation_path_coverage&quot;,
+      &quot;category&quot;: &quot;LangGraph Flow&quot;,
+      &quot;severity&quot;: &quot;Critical&quot;,
+      &quot;measurement_method&quot;: &quot;rule (expected path)&quot;,
+      &quot;value_type&quot;: &quot;pass/fail&quot;,
+      &quot;description&quot;: &quot;...&quot;,
+      &quot;mvp_priority&quot;: null,
+      &quot;ref_agent_priority&quot;: 4
+    }
+  ]
+}
+</code></pre>
+<h2 id="get-api-reference-fixtures">GET <code>/api/reference/fixtures</code></h2>
+<p>Lists executable Reference Agent fixtures.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;fixtures&quot;: [
+    {
+      &quot;id&quot;: &quot;normal-login-error-spike&quot;,
+      &quot;userInput&quot;: &quot;지난 1시간 동안 /api/login endpoint...&quot;,
+      &quot;accessLogPath&quot;: &quot;reference_agent/weblog_agent/fixtures/access.log&quot;,
+      &quot;fault&quot;: null,
+      &quot;expectedCategory&quot;: null
+    }
+  ]
+}
+</code></pre>
+<h2 id="post-api-reference-runs">POST <code>/api/reference/runs</code></h2>
+<p>Runs the Reference Agent and stores generated artifacts.</p>
+<h3 id="fixture-request">Fixture request</h3>
+<pre><code class="language-json">
+{
+  &quot;mode&quot;: &quot;fixture&quot;,
+  &quot;fixtureId&quot;: &quot;normal-login-error-spike&quot;,
+  &quot;useLlm&quot;: false
+}
+</code></pre>
+<h3 id="custom-analysis-request">Custom analysis request</h3>
+<pre><code class="language-json">
+{
+  &quot;mode&quot;: &quot;custom-analysis&quot;,
+  &quot;userInput&quot;: &quot;지난 1시간 동안 /api/login 5xx 에러율을 분석해주세요&quot;,
+  &quot;accessLogPath&quot;: &quot;reference_agent/weblog_agent/fixtures/access.log&quot;,
+  &quot;useLlm&quot;: false
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;run&quot;: {
+    &quot;id&quot;: &quot;ref_1715780000_normal-login-error-spike&quot;,
+    &quot;mode&quot;: &quot;fixture&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;fixtureId&quot;: &quot;normal-login-error-spike&quot;,
+    &quot;useLlm&quot;: false,
+    &quot;tracePath&quot;: &quot;artifacts/frontend-api/reference-runs/traces/normal-login-error-spike.jsonl&quot;,
+    &quot;reportPath&quot;: &quot;artifacts/frontend-api/reference-runs/reports/normal-login-error-spike.md&quot;,
+    &quot;eventCounts&quot;: {
+      &quot;run_start&quot;: 1,
+      &quot;react_step&quot;: 9,
+      &quot;validation_result&quot;: 1,
+      &quot;final_output&quot;: 1
+    },
+    &quot;timelinePreview&quot;: [
+      {
+        &quot;index&quot;: 10,
+        &quot;type&quot;: &quot;react_step&quot;,
+        &quot;title&quot;: &quot;compute_log_metrics&quot;,
+        &quot;detail&quot;: &quot;...&quot;
+      }
+    ],
+    &quot;createdAt&quot;: 1715780000.0,
+    &quot;updatedAt&quot;: 1715780002.0
+  }
+}
+</code></pre>
+<h2 id="get-api-reference-runs">GET <code>/api/reference/runs</code></h2>
+<p>Lists stored Reference Agent runs.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{&quot;runs&quot;: [{&quot;id&quot;: &quot;ref_...&quot;, &quot;status&quot;: &quot;succeeded&quot;}]}
+</code></pre>
+<h2 id="get-api-reference-runs-run_id">GET <code>/api/reference/runs/{run_id}</code></h2>
+<p>Returns run metadata and report excerpt.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;run&quot;: {&quot;id&quot;: &quot;ref_...&quot;, &quot;tracePath&quot;: &quot;...&quot;},
+  &quot;reportExcerpt&quot;: &quot;## Summary\n...&quot;
+}
+</code></pre>
+<h2 id="get-api-reference-runs-run_id-trace">GET <code>/api/reference/runs/{run_id}/trace</code></h2>
+<p>Returns parsed JSONL trace events.</p>
+<p>Query parameters:</p>
+<table>
+<thead><tr><th>Name</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>offset</code></td><td><code>0</code></td><td>first event index</td></tr>
+<tr><td><code>limit</code></td><td><code>200</code></td><td>maximum event count</td></tr>
+<tr><td><code>type</code></td><td>none</td><td>optional event type filter</td></tr>
+</tbody>
+</table>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;runId&quot;: &quot;ref_...&quot;,
+  &quot;tracePath&quot;: &quot;...jsonl&quot;,
+  &quot;events&quot;: [
+    {&quot;index&quot;: 0, &quot;type&quot;: &quot;run_start&quot;, &quot;raw&quot;: {}}
+  ],
+  &quot;nextOffset&quot;: 200
+}
+</code></pre>
+<h2 id="post-api-analyses">POST <code>/api/analyses</code></h2>
+<p>Analyzes trace paths or a Reference Agent run trace.</p>
+<h3 id="trace-paths-request">Trace paths request</h3>
+<pre><code class="language-json">
+{
+  &quot;source&quot;: {
+    &quot;kind&quot;: &quot;trace-paths&quot;,
+    &quot;tracePaths&quot;: [&quot;artifacts/frontend-api/reference-runs/traces/normal-login-error-spike.jsonl&quot;]
+  },
+  &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;
+}
+</code></pre>
+<h3 id="reference-run-request">Reference run request</h3>
+<pre><code class="language-json">
+{
+  &quot;source&quot;: {
+    &quot;kind&quot;: &quot;reference-run&quot;,
+    &quot;referenceRunId&quot;: &quot;ref_1715780000_normal-login-error-spike&quot;
+  },
+  &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;analysis&quot;: {
+    &quot;id&quot;: &quot;ana_1715780003&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;source&quot;: {&quot;kind&quot;: &quot;reference-run&quot;, &quot;tracePaths&quot;: [&quot;...jsonl&quot;]},
+    &quot;summary&quot;: {
+      &quot;runCount&quot;: 1,
+      &quot;gateCounts&quot;: {&quot;pass&quot;: 0, &quot;warning&quot;: 0, &quot;block&quot;: 1},
+      &quot;severityCounts&quot;: {&quot;low&quot;: 0, &quot;medium&quot;: 0, &quot;high&quot;: 1, &quot;critical&quot;: 1},
+      &quot;topFindings&quot;: []
+    },
+    &quot;findings&quot;: []
+  }
+}
+</code></pre>
+<h2 id="get-api-analyses">GET <code>/api/analyses</code></h2>
+<p>Lists analyses.</p>
+<p>Response:</p>
+<pre><code class="language-json">
+{&quot;analyses&quot;: [{&quot;id&quot;: &quot;ana_...&quot;, &quot;status&quot;: &quot;succeeded&quot;}]}
+</code></pre>
+<h2 id="get-api-analyses-analysis_id">GET <code>/api/analyses/{analysis_id}</code></h2>
+<p>Returns analysis detail and markdown report excerpt.</p>
+<h2 id="post-api-judge-sessions">POST <code>/api/judge/sessions</code></h2>
+<p>Creates a conversational Judge Agent session from an analysis.</p>
+<p>Request:</p>
+<pre><code class="language-json">
+{
+  &quot;analysisId&quot;: &quot;ana_1715780003&quot;,
+  &quot;sessionId&quot;: &quot;weblog-drift-review&quot;,
+  &quot;mode&quot;: &quot;deterministic-v2&quot;,
+  &quot;llm&quot;: {&quot;provider&quot;: &quot;none&quot;, &quot;model&quot;: null}
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;session&quot;: {
+    &quot;id&quot;: &quot;weblog-drift-review&quot;,
+    &quot;mode&quot;: &quot;deterministic-v2&quot;,
+    &quot;analysisId&quot;: &quot;ana_1715780003&quot;,
+    &quot;loadedTraces&quot;: [&quot;...jsonl&quot;],
+    &quot;focus&quot;: {&quot;findingId&quot;: &quot;JD-001&quot;, &quot;metric&quot;: &quot;validation_path_coverage&quot;},
+    &quot;messages&quot;: []
+  }
+}
+</code></pre>
+<h2 id="get-api-judge-sessions">GET <code>/api/judge/sessions</code></h2>
+<p>Lists conversation sessions.</p>
+<h2 id="get-api-judge-sessions-session_id">GET <code>/api/judge/sessions/{session_id}</code></h2>
+<p>Returns session detail.</p>
+<h2 id="post-api-judge-sessions-session_id-messages">POST <code>/api/judge/sessions/{session_id}/messages</code></h2>
+<p>Sends a user message to the selected conversational Judge runtime.</p>
+<p>Request:</p>
+<pre><code class="language-json">
+{
+  &quot;content&quot;: &quot;왜 block이야?&quot;,
+  &quot;context&quot;: {
+    &quot;findingId&quot;: &quot;JD-001&quot;,
+    &quot;metric&quot;: &quot;validation_path_coverage&quot;
+  }
+}
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">
+{
+  &quot;message&quot;: {
+    &quot;id&quot;: &quot;msg_1715780004&quot;,
+    &quot;role&quot;: &quot;assistant&quot;,
+    &quot;content&quot;: &quot;block의 직접 원인은 critical finding...&quot;,
+    &quot;focusedFindingId&quot;: &quot;JD-001&quot;,
+    &quot;focusedMetric&quot;: &quot;validation_path_coverage&quot;,
+    &quot;toolCalls&quot;: [
+      {&quot;name&quot;: &quot;explain_gate&quot;, &quot;status&quot;: &quot;success&quot;, &quot;summary&quot;: &quot;block 1개&quot;}
+    ]
+  },
+  &quot;session&quot;: {&quot;id&quot;: &quot;weblog-drift-review&quot;}
+}
+</code></pre>
+<h2 id="mvp-endpoint-priority">MVP Endpoint Priority</h2>
+<ol>
+<li><code>GET /api/health</code></li>
+<li><code>GET /api/config</code></li>
+<li><code>GET /api/reference/fixtures</code></li>
+<li><code>POST /api/reference/runs</code> fixture mode</li>
+<li><code>POST /api/analyses</code></li>
+<li><code>POST /api/judge/sessions</code></li>
+<li><code>POST /api/judge/sessions/{session_id}/messages</code></li>
+</ol>
+</body>
+</html>
