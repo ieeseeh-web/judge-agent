@@ -6,6 +6,10 @@ reference_agent/weblog_agent/reports/*.md
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.egg-info/
+
+# OS metadata
+.DS_Store
 
 # Local environment / secrets
 .env
