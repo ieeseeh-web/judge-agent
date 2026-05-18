@@ -13,6 +13,34 @@ judgeagent/
 └── README.md             # 이 문서
 ```
 
+## UI 주요 기능
+
+### 화면 레이아웃
+
+좌/우 패널과 우측 내부 Metrics/Chat 영역 사이에 드래그 핸들이 있어 각 패널 크기를 자유롭게 조절할 수 있습니다 (`react-resizable-panels` 기반).
+
+### 대화형 Reference Agent (좌측 패널)
+
+Reference Agent 패널이 채팅 인터페이스로 동작합니다.
+
+- **질의 입력**: 직접 분석 질의를 입력하거나 Examples 드롭다운에서 fixture 질의를 자동완성합니다.
+- **모델 선택**: 헤더의 Model 입력 필드에 모델 ID를 지정하면 해당 run에만 적용됩니다. 비워두면 서버 기본 모델을 사용합니다.
+- **실행 모드**: `Deterministic` / `Hybrid (LLM)` 중 선택합니다.
+- **응답 표시**: 각 대화 턴마다 사용자 버블(우측)과 에이전트 버블(좌측)이 표시됩니다. 에이전트 버블에는 사용한 모델명, Thinking Process(접기/펼치기), 최종 응답이 포함됩니다.
+- **액션 버튼**: Judge this trace / Set baseline / Compare prompt regression은 최근 성공한 run을 기준으로 동작합니다.
+
+### Prompt Edit (팝업 모달)
+
+Prompt edit 버튼을 클릭하면 팝업 모달이 열립니다. 인라인 확장 방식이 아니므로 에이전트 트레이스 영역을 가리지 않습니다.
+
+| 탭 | 기능 |
+|---|---|
+| **Edit** | `SYSTEM_PROMPT`, `TOOL_POLICY`, `OUTPUT_CONTRACT` 직접 편집. 수정된 필드만 override로 전송됩니다. |
+| **History** | 이전에 저장된 프롬프트 목록 표시. 각 항목을 Load하면 Edit 탭에 복원됩니다. 개별/전체 삭제 가능. |
+
+- 히스토리는 `localStorage`에 최대 30개까지 저장되며 페이지 새로고침 후에도 유지됩니다.
+- Done 클릭 시 수정된 내용이 있으면 자동으로 히스토리에 저장됩니다. 직전 저장과 동일한 내용은 중복 저장되지 않습니다.
+
 ## backend/
 
 프론트엔드에서 호출하는 API 서버와 `judge-agent-simple` CLI 엔트리포인트가 들어 있습니다.
@@ -31,10 +59,26 @@ judgeagent/
 - `GET /api/config`
 - `GET /api/metrics`
 - `GET /api/reference/fixtures`
-- `POST /api/reference/runs`
+- `GET /api/reference/prompts`
+- `POST /api/reference/runs` — `mode: fixture | custom-analysis`, `modelId` 필드로 per-run 모델 지정 가능
 - `POST /api/analyses`
+- `POST /api/prompt-regressions`
 - `POST /api/judge/sessions`
 - `POST /api/judge/sessions/{session_id}/messages`
+
+### `POST /api/reference/runs` 요청 예시
+
+```json
+{
+  "mode": "custom-analysis",
+  "userInput": "지난 1시간 동안 /api/login 5xx 에러율을 분석해주세요.",
+  "useLlm": true,
+  "modelId": "gpt-4o"
+}
+```
+
+`modelId`를 생략하면 서버 환경변수(`JUDGE_LLM_MODEL` / `LLM_MODEL`)에 설정된 기본 모델을 사용합니다.  
+응답의 `run.modelId` 필드에 실제 사용된 모델명이 기록됩니다.
 
 ## frontend/
 
@@ -196,9 +240,10 @@ weblog-agent run-all --no-llm
 실행 결과는 주로 프로젝트 루트의 `artifacts/` 아래에 저장됩니다.
 
 - `artifacts/weblog-reference/` — reference agent trace/report
-- `artifacts/frontend-api/reference-runs/` — API를 통해 실행한 reference run 결과
+- `artifacts/frontend-api/reference-runs/` — API를 통해 실행한 reference run 결과 (registry에 `modelId` 포함)
 - `artifacts/frontend-api/analyses/` — Judge Agent 분석 결과
 - `artifacts/frontend-api/judge-sessions/` — 대화형 judge session 상태
+- `artifacts/frontend-api/prompt-regressions/` — Prompt/Model regression 비교 결과
 
 ## 개발 참고
 

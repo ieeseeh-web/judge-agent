@@ -88,14 +88,17 @@ npm run dev
 ### Backend API만 실행
 
 ```bash
-BACKEND_PORT=19001 python -m uvicorn judgeagent.backend.api:app \
+BACKEND_PORT=19001 python3 -m uvicorn judgeagent.backend.api:app \
   --reload --host 0.0.0.0 --port 19001
 ```
+
+> macOS에서는 `python` 명령이 없을 수 있으므로 `python3`을 사용합니다. `start.sh`도 동일하게 `python3`을 사용합니다.
 
 ### Frontend만 실행
 
 ```bash
 cd judgeagent/frontend/app
+npm install   # 최초 1회 또는 패키지 추가 후
 npm run dev
 ```
 
