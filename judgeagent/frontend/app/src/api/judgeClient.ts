@@ -47,6 +47,7 @@ function mapRun(run: any): ReferenceRun {
     mode: run.mode,
     status: run.status,
     userInput: run.userInput,
+    modelId: run.modelId,
     tracePath: run.tracePath,
     reportPath: run.reportPath,
     promptVariant: run.promptVariant,
@@ -70,10 +71,10 @@ export async function runReferenceAgent(fixtureId: string, useLlm: boolean = fal
   return mapRun(data.run);
 }
 
-export async function runReferenceAgentCustom(userInput: string, useLlm: boolean = true, promptOverrides?: PromptOverrides): Promise<ReferenceRun> {
+export async function runReferenceAgentCustom(userInput: string, useLlm: boolean = true, promptOverrides?: PromptOverrides, modelId?: string): Promise<ReferenceRun> {
   const data = await apiFetch<any>('/api/reference/runs', {
     method: 'POST',
-    body: JSON.stringify({ mode: 'custom-analysis', userInput, useLlm, promptOverrides }),
+    body: JSON.stringify({ mode: 'custom-analysis', userInput, useLlm, promptOverrides, modelId: modelId || undefined }),
   });
   return mapRun(data.run);
 }

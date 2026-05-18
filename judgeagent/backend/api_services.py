@@ -145,9 +145,12 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
     trace_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
+    llm_client = create_llm_client(model=request.modelId) if request.modelId else None
     logger = TraceLogger(trace_path, run_id=run_id)
     try:
-        agent = WebLogAnalysisAgent(logger, fault=fault, use_llm=request.useLlm, prompt_overrides=request.promptOverrides)
+        agent = WebLogAnalysisAgent(logger, fault=fault, use_llm=request.useLlm, llm=llm_client, prompt_overrides=request.promptOverrides)
+        _llm = agent.llm
+        actual_model_id = getattr(getattr(_llm, 'config', None), 'model', None) or getattr(_llm, 'model', None)
         state = agent.run(user_input, str(access_log_path))
     except Exception as exc:
         logger.close()
@@ -168,6 +171,7 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
         "userInput": user_input,
         "accessLogPath": str(access_log_path),
         "useLlm": request.useLlm,
+        "modelId": actual_model_id,
         "promptVariant": request.promptOverrides.get("variant") if request.promptOverrides else "default",
         "promptOverrides": sorted(request.promptOverrides.keys()) if request.promptOverrides else [],
         "tracePath": str(trace_path),

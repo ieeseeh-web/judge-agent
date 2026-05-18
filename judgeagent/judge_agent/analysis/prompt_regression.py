@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from .analyzer import analyze_trace
 from .reporter import markdown_report
@@ -28,6 +28,9 @@ class PromptRegressionSummary:
     newHighCriticalFindingCount: int
     resolvedFindingCount: int
     regressionScore: int
+    baselineModel: Optional[str] = None
+    candidateModel: Optional[str] = None
+    modelChanged: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__.copy()
@@ -51,6 +54,13 @@ class PromptRegressionResult:
             "newFindings": [finding.to_dict() for finding in self.new_findings],
             "resolvedFindings": [finding.to_dict() for finding in self.resolved_findings],
         }
+
+
+def _llm_model(run: SimpleAgentRun) -> Optional[str]:
+    events = run.raw_by_type("run_start")
+    if events:
+        return events[0].get("llm_model") or None
+    return None
 
 
 def _prompt_identity(run: SimpleAgentRun) -> Dict[str, Any]:
@@ -110,6 +120,23 @@ def detect_prompt_regressions(baseline: AnalysisResult, candidate: AnalysisResul
     new_high_critical = [f for f in new_findings if f.severity in {"high", "critical"}]
     gate_regressed = GATE_RANK.get(candidate.gate, 0) > GATE_RANK.get(baseline.gate, 0)
     score_delta = candidate.score - baseline.score
+
+    baseline_model = _llm_model(baseline.run)
+    candidate_model = _llm_model(candidate.run)
+    model_changed = bool(baseline_model and candidate_model and baseline_model != candidate_model)
+
+    if model_changed:
+        findings.append(_make_finding(
+            len(findings) + 1,
+            category="model",
+            metric="model_change_detected",
+            severity="medium",
+            confidence=0.99,
+            evidence=[f"baseline_model={baseline_model}", f"candidate_model={candidate_model}"],
+            expected="Baseline과 Candidate 실행에 동일한 LLM 모델이 사용되어야 합니다.",
+            actual=f"모델이 '{baseline_model}'에서 '{candidate_model}'로 변경되었습니다. 행동 차이가 프롬프트 변경이 아닌 모델 변경으로 인한 것일 수 있습니다.",
+            recommendation="모델 드리프트를 프롬프트 드리프트와 분리하려면, 동일한 프롬프트로 다른 모델을 실행한 뒤 비교하세요.",
+        ))
 
     if gate_regressed:
         findings.append(_make_finding(
@@ -209,6 +236,9 @@ def detect_prompt_regressions(baseline: AnalysisResult, candidate: AnalysisResul
         newHighCriticalFindingCount=len(new_high_critical),
         resolvedFindingCount=len(resolved_findings),
         regressionScore=regression_score,
+        baselineModel=baseline_model,
+        candidateModel=candidate_model,
+        modelChanged=model_changed,
     )
     return PromptRegressionResult(baseline=baseline, candidate=candidate, findings=findings, new_findings=new_findings, resolved_findings=resolved_findings, summary=summary)
 
@@ -239,6 +269,12 @@ def markdown_prompt_regression_report(result: PromptRegressionResult) -> str:
         "",
         f"- baseline: `{baseline_prompt}`",
         f"- candidate: `{candidate_prompt}`",
+        "",
+        "## Model",
+        "",
+        f"- baseline model: `{result.summary.baselineModel or 'unknown'}`",
+        f"- candidate model: `{result.summary.candidateModel or 'unknown'}`",
+        f"- model changed: **{result.summary.modelChanged}**",
         "",
         "## Regression Findings",
         "",

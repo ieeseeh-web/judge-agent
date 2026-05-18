@@ -102,10 +102,27 @@ function PromptRegressionSummaryCard({ regression }: { regression: PromptRegress
   const tone = s?.gateRegressed || (s?.regressionScore ?? 100) < 85 ? GATE_CONFIG.block : GATE_CONFIG.pass;
   return (
     <div style={{ backgroundColor: tone.bg, border: `1px solid ${tone.border}`, borderRadius: 10, padding: '12px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <Text strong style={{ color: tone.color }}>Prompt Regression</Text>
         <Tag color={s?.gateRegressed ? 'error' : 'success'}>{s?.gateRegressed ? 'REGRESSED' : 'STABLE'}</Tag>
+        {s?.modelChanged && (
+          <Tag color="volcano" style={{ fontWeight: 600 }}>⚠ MODEL CHANGED</Tag>
+        )}
       </div>
+
+      {s?.modelChanged && (
+        <div style={{ marginBottom: 10, background: '#fff7e6', border: '1px solid #ffd591', borderRadius: 6, padding: '6px 10px' }}>
+          <Text style={{ fontSize: '0.75rem', color: '#d46b08' }}>
+            모델이 변경되었습니다. 행동 차이가 프롬프트 변경이 아닌 <strong>모델 변경</strong>에 의한 것일 수 있습니다.
+          </Text>
+          <div style={{ marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Tag style={{ fontSize: '0.7rem', margin: 0 }}>Baseline: {s.baselineModel ?? '—'}</Tag>
+            <Text style={{ fontSize: '0.7rem', color: '#8c8c8c' }}>→</Text>
+            <Tag color="orange" style={{ fontSize: '0.7rem', margin: 0 }}>Candidate: {s.candidateModel ?? '—'}</Tag>
+          </div>
+        </div>
+      )}
+
       <Row gutter={8}>
         <Col span={6}><Text type="secondary" style={{ fontSize: '0.7rem' }}>Regression Score</Text><br/><Text strong>{s?.regressionScore ?? '—'}</Text></Col>
         <Col span={6}><Text type="secondary" style={{ fontSize: '0.7rem' }}>Baseline</Text><br/><Text strong>{s?.baselineGate ?? '—'} / {s?.baselineScore ?? '—'}</Text></Col>

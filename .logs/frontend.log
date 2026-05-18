@@ -292,3 +292,14 @@ Visit https://react.dev/link/error-boundaries to learn more about error boundari
 10:57:40 PM [vite] (client) [console.error] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead.
 10:57:40 PM [vite] (client) [console.error] Warning: [antd: Card] `bordered` is deprecated. Please use `variant` instead.
 10:58:20 PM [vite] (client) [console.error] Warning: [antd: Tag] `bordered={false}` is deprecated. Please use `variant="filled"` instead.
+11:12:33 PM [vite] (client) hmr update /src/App.tsx, /src/components/ReferenceAgentPanel.tsx
+11:12:49 PM [vite] (client) hmr update /src/App.tsx, /src/components/ReferenceAgentPanel.tsx
+11:13:39 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+11:13:48 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+11:14:03 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+11:14:29 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+11:14:52 PM [vite] (client) hmr update /src/components/MetricsPanel.tsx
+11:15:49 PM [vite] (client) [console.error] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead.
+11:15:49 PM [vite] (client) [console.error] Warning: [antd: Card] `bordered` is deprecated. Please use `variant` instead.
+11:22:08 PM [vite] (client) [console.error] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead.
+11:22:08 PM [vite] (client) [console.error] Warning: [antd: Card] `bordered` is deprecated. Please use `variant` instead.

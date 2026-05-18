@@ -120,6 +120,9 @@ function AgentBubble({ turn }: { turn: RefChatTurn }) {
         <RobotOutlined style={{ color: '#52c41a', fontSize: 15 }} />
         <Text style={{ fontSize: '0.78rem', color: '#52c41a', fontWeight: 600 }}>REFERENCE AGENT</Text>
         <Tag color={run.status === 'succeeded' ? 'success' : 'error'} style={{ margin: 0, fontSize: '0.65rem' }}>{run.status.toUpperCase()}</Tag>
+        {run.modelId && (
+          <Tag color="purple" style={{ margin: 0, fontSize: '0.65rem' }}>{run.modelId}</Tag>
+        )}
         {run.promptVariant && run.promptVariant !== 'default' && (
           <Tag color="blue" style={{ margin: 0, fontSize: '0.65rem' }}>{run.promptVariant}</Tag>
         )}
@@ -180,6 +183,7 @@ export function ReferenceAgentPanel({
   const [input, setInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [selectedMode, setSelectedMode] = useState('hybrid');
+  const [selectedModelId, setSelectedModelId] = useState('');
   const [fixtures, setFixtures] = useState<FixtureOption[]>([]);
 
   const [promptModalOpen, setPromptModalOpen] = useState(false);
@@ -221,7 +225,7 @@ export function ReferenceAgentPanel({
     setIsRunning(true);
 
     try {
-      const run = await api.runReferenceAgentCustom(msg, selectedMode === 'hybrid', changedPromptOverrides());
+      const run = await api.runReferenceAgentCustom(msg, selectedMode === 'hybrid', changedPromptOverrides(), selectedModelId.trim() || undefined);
       setChatTurns(prev => prev.map(t =>
         t.id === turnId ? { ...t, run, status: run.status === 'succeeded' ? 'succeeded' : 'failed' } : t
       ));
@@ -292,13 +296,24 @@ export function ReferenceAgentPanel({
           <Select
             value={selectedMode}
             size="small"
-            style={{ width: 140 }}
+            style={{ width: 130 }}
             onChange={setSelectedMode}
             options={[
               { value: 'no-llm', label: 'Deterministic' },
               { value: 'hybrid', label: 'Hybrid (LLM)' },
             ]}
           />
+
+          <Tooltip title="사용할 LLM 모델 ID를 지정합니다. 비워두면 서버 기본값을 사용합니다.">
+            <Input
+              size="small"
+              value={selectedModelId}
+              onChange={e => setSelectedModelId(e.target.value)}
+              placeholder="Model (기본값)"
+              style={{ width: 160 }}
+              allowClear
+            />
+          </Tooltip>
 
           <Button
             size="small"

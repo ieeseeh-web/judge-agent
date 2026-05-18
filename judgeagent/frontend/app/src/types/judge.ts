@@ -34,6 +34,7 @@ export type ReferenceRun = {
   mode: ReferenceRunMode;
   status: ReferenceRunStatus;
   userInput?: string;
+  modelId?: string;
   tracePath?: string;
   reportPath?: string;
   promptVariant?: string;
@@ -110,6 +111,9 @@ export type PromptRegressionSummary = {
   newHighCriticalFindingCount: number;
   resolvedFindingCount: number;
   regressionScore: number;
+  baselineModel?: string;
+  candidateModel?: string;
+  modelChanged?: boolean;
 };
 
 export type PromptRegression = {
