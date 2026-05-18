@@ -1,0 +1,37 @@
+{
+  "preg_20260518_224032_758": {
+    "id": "preg_20260518_224032_758",
+    "status": "succeeded",
+    "adapter": "reference-weblog-jsonl",
+    "baseline": {
+      "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260518_224004_590_normal-login-error-spike.jsonl",
+      "referenceRunId": "ref_20260518_224004_590_normal-login-error-spike"
+    },
+    "candidate": {
+      "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260518_224024_546_normal-login-error-spike.jsonl",
+      "referenceRunId": "ref_20260518_224024_546_normal-login-error-spike"
+    },
+    "summary": {
+      "baselineRunId": "ref_20260518_224004_590_normal-login-error-spike",
+      "candidateRunId": "ref_20260518_224024_546_normal-login-error-spike",
+      "baselineGate": "pass",
+      "candidateGate": "pass",
+      "baselineScore": 100,
+      "candidateScore": 100,
+      "scoreDelta": 0,
+      "gateChanged": false,
+      "gateRegressed": false,
+      "newFindingCount": 0,
+      "newHighCriticalFindingCount": 0,
+      "resolvedFindingCount": 0,
+      "regressionScore": 100
+    },
+    "findings": [],
+    "newFindings": [],
+    "resolvedFindings": [],
+    "reportPath": "artifacts/frontend-api/prompt-regressions/reports/preg_20260518_224032_758.md",
+    "jsonPath": "artifacts/frontend-api/prompt-regressions/results/preg_20260518_224032_758.json",
+    "createdAt": 1779111632.823134,
+    "updatedAt": 1779111632.823134
+  }
+}

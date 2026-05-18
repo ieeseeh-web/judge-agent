@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { PromptOverrides, ReferencePromptDefaults, ReferenceRun } from '../types/judge';
 import { ReferenceChatView } from './ReferenceChatView';
-import { Card, Select, Button, Space, Typography, Tag, Divider, Row, Col, Collapse, Input } from 'antd';
-import { PlayCircleOutlined, ExperimentOutlined, BranchesOutlined, FlagOutlined } from '@ant-design/icons';
+import { Card, Select, Button, Space, Typography, Tag, Divider, Row, Col, Modal, Input } from 'antd';
+import { PlayCircleOutlined, ExperimentOutlined, BranchesOutlined, FlagOutlined, EditOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -24,6 +24,7 @@ export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaselin
   const [systemPrompt, setSystemPrompt] = useState('');
   const [toolPolicy, setToolPolicy] = useState('');
   const [outputContract, setOutputContract] = useState('');
+  const [promptModalOpen, setPromptModalOpen] = useState(false);
 
   const loadDefaultPrompts = () => {
     if (!defaultPrompts) return;
@@ -93,27 +94,51 @@ export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaselin
               </Col>
             </Row>
 
-            <Collapse
+            <Button
               size="small"
-              style={{ marginTop: 8 }}
-              items={[{
-                key: 'prompt-editor',
-                label: 'Prompt edit for candidate run',
-                children: (
-                  <Space direction="vertical" style={{ width: '100%' }} size="small">
-                    <Text type="secondary" style={{ fontSize: '0.78rem' }}>Baseline은 prompt edit을 비운 기본 prompt로 실행한 뒤 Set baseline 하세요. Candidate는 Load default prompts로 현재 prompt를 불러와 실제 문구를 수정한 뒤 실행합니다.</Text>
-                    <Space>
-                      <Button size="small" onClick={loadDefaultPrompts} disabled={!defaultPrompts}>Load default prompts</Button>
-                      <Button size="small" onClick={clearPromptEdits}>Clear edits / run default prompt</Button>
-                    </Space>
-                    <Input value={promptVariant} onChange={(e) => setPromptVariant(e.target.value)} placeholder="prompt variant label" />
-                    <Input.TextArea rows={4} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} placeholder="Override SYSTEM_PROMPT for candidate run (optional)" />
-                    <Input.TextArea rows={4} value={toolPolicy} onChange={(e) => setToolPolicy(e.target.value)} placeholder="Override TOOL_POLICY for candidate run (optional)" />
-                    <Input.TextArea rows={5} value={outputContract} onChange={(e) => setOutputContract(e.target.value)} placeholder="Override OUTPUT_CONTRACT for candidate run (optional)" />
-                  </Space>
-                )
-              }]}
-            />
+              icon={<EditOutlined />}
+              onClick={() => setPromptModalOpen(true)}
+              style={{ marginTop: 8, alignSelf: 'flex-start' }}
+            >
+              Prompt edit for candidate run
+              {changedPromptOverrides() && <Tag color="blue" style={{ marginLeft: 6, fontSize: '0.7rem' }}>edited</Tag>}
+            </Button>
+
+            <Modal
+              title="Prompt edit for candidate run"
+              open={promptModalOpen}
+              onCancel={() => setPromptModalOpen(false)}
+              footer={null}
+              width={680}
+              destroyOnHidden
+            >
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Text type="secondary" style={{ fontSize: '0.78rem' }}>Baseline은 prompt edit을 비운 기본 prompt로 실행한 뒤 Set baseline 하세요. Candidate는 Load default prompts로 현재 prompt를 불러와 실제 문구를 수정한 뒤 실행합니다.</Text>
+                <Space>
+                  <Button size="small" onClick={loadDefaultPrompts} disabled={!defaultPrompts}>Load default prompts</Button>
+                  <Button size="small" onClick={clearPromptEdits}>Clear edits / run default prompt</Button>
+                </Space>
+                <div>
+                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Prompt variant label</Text>
+                  <Input value={promptVariant} onChange={(e) => setPromptVariant(e.target.value)} placeholder="prompt variant label" />
+                </div>
+                <div>
+                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>System Prompt</Text>
+                  <Input.TextArea rows={4} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} placeholder="Override SYSTEM_PROMPT for candidate run (optional)" />
+                </div>
+                <div>
+                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Tool Policy</Text>
+                  <Input.TextArea rows={4} value={toolPolicy} onChange={(e) => setToolPolicy(e.target.value)} placeholder="Override TOOL_POLICY for candidate run (optional)" />
+                </div>
+                <div>
+                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Output Contract</Text>
+                  <Input.TextArea rows={5} value={outputContract} onChange={(e) => setOutputContract(e.target.value)} placeholder="Override OUTPUT_CONTRACT for candidate run (optional)" />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button type="primary" onClick={() => setPromptModalOpen(false)}>Done</Button>
+                </div>
+              </Space>
+            </Modal>
             <Space style={{ marginTop: '8px' }}>
               <Button type="default" icon={<PlayCircleOutlined />} onClick={handleRun} loading={isLoading}>
                 Run Reference Agent

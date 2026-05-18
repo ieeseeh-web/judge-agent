@@ -1,0 +1,26 @@
+{
+  "session-1779111100873": {
+    "id": "session-1779111100873",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_223140_800",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779111100873.conversation.json",
+    "createdAt": 1779111100.8871942,
+    "updatedAt": 1779111110.464681
+  },
+  "session-1779111610050": {
+    "id": "session-1779111610050",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_224009_964",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779111610050.conversation.json",
+    "createdAt": 1779111610.066168,
+    "updatedAt": 1779111610.066169
+  },
+  "session-1779111637787": {
+    "id": "session-1779111637787",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_224037_695",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779111637787.conversation.json",
+    "createdAt": 1779111637.8040938,
+    "updatedAt": 1779111643.459372
+  }
+}

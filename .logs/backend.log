@@ -1,0 +1,71 @@
+INFO:     Will watch for changes in these directories: ['/Users/l-20220020/workspaces/judge-agent']
+INFO:     Uvicorn running on http://0.0.0.0:19001 (Press CTRL+C to quit)
+INFO:     Started reloader process [61752] using StatReload
+INFO:     Started server process [61756]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:59984 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59987 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59989 - "GET /api/v1/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60008 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60009 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60008 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60014 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60013 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60015 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60013 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60015 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60015 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60013 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60038 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60041 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60042 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60038 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60041 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60042 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60046 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60046 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60051 - "OPTIONS /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60051 - "POST /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60051 - "OPTIONS /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60051 - "POST /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60053 - "OPTIONS /api/judge/sessions/session-1779111100873/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60053 - "POST /api/judge/sessions/session-1779111100873/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60161 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60160 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60161 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60163 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60169 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60169 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60165 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60194 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60165 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60196 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60196 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60227 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60226 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60227 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60229 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60233 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60232 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60232 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60233 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60250 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60249 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60250 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60252 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60252 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60254 - "POST /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60254 - "POST /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60258 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "OPTIONS /api/prompt-regressions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "POST /api/prompt-regressions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "POST /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "POST /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "OPTIONS /api/judge/sessions/session-1779111637787/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "POST /api/judge/sessions/session-1779111637787/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "POST /api/judge/sessions/session-1779111637787/messages HTTP/1.1" 200 OK

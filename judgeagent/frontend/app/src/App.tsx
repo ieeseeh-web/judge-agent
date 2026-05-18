@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { ChatPanel } from './components/ChatPanel';
 import { ReferenceAgentPanel } from './components/ReferenceAgentPanel';
 import { MetricsPanel } from './components/MetricsPanel';
 import * as api from './api/judgeClient';
 import type { ChatMessage, ConfigSnapshot, ReferenceRun, AnalysisSummary, Finding, PromptOverrides, PromptRegression, ReferencePromptDefaults } from './types/judge';
-import { ConfigProvider, Layout, Row, Col, Typography, message, Card } from 'antd';
+import { ConfigProvider, Layout, Typography, message, Card } from 'antd';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -167,12 +168,12 @@ function App() {
           <Title level={3} style={{ margin: 0, color: '#0f172a' }}>Judge Agent Workspace</Title>
         </Header>
 
-        <Content style={{ padding: '24px', backgroundColor: '#f1f5f9', overflow: 'hidden' }}>
-          <Row gutter={24} style={{ height: '100%' }}>
+        <Content style={{ padding: '16px', backgroundColor: '#f1f5f9', overflow: 'hidden', height: '100%' }}>
+          <Group orientation="horizontal" style={{ height: '100%', gap: 0 }}>
 
             {/* Left Panel: Reference Agent Monitor */}
-            <Col span={12} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+            <Panel defaultSize={50} minSize={30} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', height: '100%' }}>
                 <ReferenceAgentPanel
                   referenceRun={safeReferenceRun}
                   onRun={handleRun}
@@ -184,24 +185,45 @@ function App() {
                   isLoading={isLoading}
                 />
               </div>
-            </Col>
+            </Panel>
+
+            {/* Horizontal resize handle */}
+            <Separator
+              style={{ width: 8, cursor: 'col-resize', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}
+            >
+              <div style={{ width: 3, height: 40, borderRadius: 2, background: '#cbd5e1' }} />
+            </Separator>
 
             {/* Right Panel: Judge Metrics & Chat */}
-            <Col span={12} style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <Panel defaultSize={50} minSize={25} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <Group orientation="vertical" style={{ flex: 1, height: '100%', gap: 0 }}>
 
-              {/* Metrics Section */}
-              <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', flexShrink: 0 }}>
-                <Title level={4} style={{ margin: '0 0 16px 0' }}>Judge Agent Metrics</Title>
-                <MetricsPanel summary={summary} findings={findings} promptRegression={promptRegression} />
-              </Card>
+                {/* Metrics Section */}
+                <Panel defaultSize={40} minSize={15} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <Card style={{ borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', height: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 24px' } }}>
+                    <Title level={4} style={{ margin: '0 0 12px 0', flexShrink: 0 }}>Judge Agent Metrics</Title>
+                    <MetricsPanel summary={summary} findings={findings} promptRegression={promptRegression} />
+                  </Card>
+                </Panel>
 
-              {/* Chat Section */}
-              <div style={{ flexGrow: 1, minHeight: 0, overflow: 'hidden', borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
-                <ChatPanel messages={messages} onSendMessage={handleSendMessage} isLoading={isLoading} />
-              </div>
+                {/* Vertical resize handle */}
+                <Separator
+                  style={{ height: 8, cursor: 'row-resize', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                >
+                  <div style={{ height: 3, width: 40, borderRadius: 2, background: '#cbd5e1' }} />
+                </Separator>
 
-            </Col>
-          </Row>
+                {/* Chat Section */}
+                <Panel defaultSize={60} minSize={20} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', height: '100%' }}>
+                    <ChatPanel messages={messages} onSendMessage={handleSendMessage} isLoading={isLoading} />
+                  </div>
+                </Panel>
+
+              </Group>
+            </Panel>
+
+          </Group>
         </Content>
       </Layout>
     </ConfigProvider>

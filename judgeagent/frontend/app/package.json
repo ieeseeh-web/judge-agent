@@ -14,6 +14,7 @@
     "antd": "^6.4.2",
     "react": "latest",
     "react-dom": "latest",
+    "react-resizable-panels": "^4.11.1",
     "typescript": "latest",
     "vite": "latest"
   },

@@ -12,7 +12,7 @@ echo "[start] Backend  → http://localhost:$BACKEND_PORT"
 echo "[start] Frontend → http://localhost:$FRONTEND_PORT"
 
 # Backend
-BACKEND_PORT=$BACKEND_PORT python -m uvicorn judgeagent.backend.api:app \
+BACKEND_PORT=$BACKEND_PORT python3 -m uvicorn judgeagent.backend.api:app \
   --reload --host 0.0.0.0 --port "$BACKEND_PORT" \
   > "$LOG_DIR/backend.log" 2>&1 &
 echo $! > "$LOG_DIR/backend.pid"
