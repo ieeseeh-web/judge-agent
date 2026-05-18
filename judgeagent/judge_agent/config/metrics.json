@@ -361,6 +361,47 @@
       "severity": "High",
       "mvp_priority": null,
       "ref_agent_priority": null
+    },
+    {
+      "name": "prompt_version_regression_score",
+      "category": "Prompt / Instruction",
+      "measurement_method": "baseline/candidate comparison",
+      "value_type": "0 ~ 100",
+      "description": "prompt 변경 후 score/gate/finding 악화를 종합한 regression score.",
+      "severity": "High",
+      "mvp_priority": null,
+      "ref_agent_priority": null
+    },
+    {
+      "name": "gate_regression",
+      "category": "Prompt / Instruction",
+      "measurement_method": "baseline/candidate gate comparison",
+      "value_type": "pass/fail",
+      "description": "동일 fixture/input에서 prompt 변경 후 gate가 pass→warning/block 또는 warning→block으로 악화되었는지.",
+      "severity": "Critical",
+      "mvp_priority": null,
+      "ref_agent_priority": null
+    },
+    {
+      "name": "new_high_severity_findings",
+      "category": "Prompt / Instruction",
+      "measurement_method": "finding set diff",
+      "value_type": "count",
+      "description": "prompt 변경 후 candidate run에 새 high/critical finding이 생겼는지.",
+      "severity": "High",
+      "mvp_priority": null,
+      "ref_agent_priority": null
+    },
+    {
+      "name": "tool_and_output_stability_score",
+      "category": "Prompt / Instruction",
+      "measurement_method": "trace sequence + output contract comparison",
+      "value_type": "0.0 ~ 1.0",
+      "description": "prompt 변경 후 tool sequence, validation path, target grounding, output format이 안정적으로 유지되는지.",
+      "severity": "Medium",
+      "mvp_priority": null,
+      "ref_agent_priority": null
     }
-  ]
+  ],
+  "reference_weblog": {}
 }

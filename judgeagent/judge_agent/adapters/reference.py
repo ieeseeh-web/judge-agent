@@ -66,6 +66,9 @@ class ReferenceAgentJsonlAdapter:
             run.instructions = {
                 "promptTemplateName": raw.get("prompt_template_name"),
                 "promptTemplateVersion": raw.get("prompt_template_version"),
+                "promptTemplateHash": raw.get("prompt_template_hash"),
+                "promptContractHash": raw.get("prompt_contract_hash"),
+                "promptSections": raw.get("prompt_sections"),
                 "system": raw.get("system"),
                 "reactProtocol": raw.get("react_protocol"),
                 "toolPolicy": raw.get("tool_policy"),

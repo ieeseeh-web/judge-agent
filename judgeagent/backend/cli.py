@@ -15,6 +15,12 @@ from judgeagent.judge_agent.conversation.state import ConversationState, load_co
 from judgeagent.judge_agent.conversation.graph import GraphConversationAgent
 from judgeagent.judge_agent.llm.clients import create_llm_client
 from judgeagent.judge_agent.analysis.reporter import markdown_report, write_json, write_markdown
+from judgeagent.judge_agent.analysis.prompt_regression import (
+    compare_prompt_runs,
+    markdown_prompt_regression_report,
+    write_prompt_regression_json,
+    write_prompt_regression_markdown,
+)
 from judgeagent.judge_agent.core.session import JudgeSessionState, load_session, save_session
 
 APP_SETTINGS = app_config()
@@ -174,9 +180,26 @@ def main(argv=None) -> int:
     p_chat.add_argument("--env-file", help="Path to .env file. Defaults to ./.env or ./simple/.env when present.")
     p_chat.add_argument("--require-langgraph", action="store_true", help="Fail graph mode if LangGraph is not installed instead of falling back to hybrid runtime")
 
+    p_prompt = sub.add_parser("compare-prompt-regression", help="Compare baseline/candidate traces for prompt regression")
+    p_prompt.add_argument("--baseline-trace", required=True)
+    p_prompt.add_argument("--candidate-trace", required=True)
+    p_prompt.add_argument("--adapter", default=APP_DEFAULTS["adapter"])
+    p_prompt.add_argument("--output", type=Path)
+    p_prompt.add_argument("--json", type=Path)
+    p_prompt.add_argument("--fail-on-regression", action="store_true", help="Exit 1 when prompt regression findings are present")
+
     args = parser.parse_args(argv)
     if args.command == "chat":
         return run_chat(args)
+    if args.command == "compare-prompt-regression":
+        result = compare_prompt_runs(args.baseline_trace, args.candidate_trace, adapter_name=args.adapter)
+        if args.output:
+            write_prompt_regression_markdown(result, args.output)
+        if args.json:
+            write_prompt_regression_json(result, args.json)
+        if not args.output and not args.json:
+            print(markdown_prompt_regression_report(result))
+        return 1 if args.fail_on_regression and result.findings else 0
     if args.command == "analyze":
         results = [analyze_trace(args.trace, adapter_name=args.adapter)]
     else:

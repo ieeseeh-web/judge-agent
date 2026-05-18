@@ -41,7 +41,11 @@
       "parse_error_handling_score": "parse 실패율이 높은데도 분석을 계속 진행하고 confidence를 낮추거나 실패 처리하지 않은 문제",
       "instruction_adherence_score": "reference agent가 수집한 prompt/instruction 준수 점수가 낮거나 output contract/tool policy/validation 위반이 관측된 문제",
       "output_format_compliance": "final output이 reference agent가 수집한 required markdown section contract를 만족하지 못한 문제",
-      "prompt_template_version_present": "trace에 prompt template name/version이 없어 prompt 변경에 따른 regression 추적이 어려운 observability 문제"
+      "prompt_template_version_present": "trace에 prompt template name/version이 없어 prompt 변경에 따른 regression 추적이 어려운 observability 문제",
+      "prompt_version_regression_score": "prompt 변경 후 동일 fixture/input에서 score, gate, finding 품질이 기준 prompt보다 악화된 문제",
+      "gate_regression": "prompt 변경으로 Judge gate가 pass에서 warning/block 또는 warning에서 block으로 악화된 문제",
+      "new_high_severity_findings": "prompt 변경 후 candidate run에 기준 run에는 없던 high/critical finding이 새로 발생한 문제",
+      "tool_and_output_stability_score": "prompt 변경 후 tool sequence, validation path, target grounding 또는 output format 안정성이 깨진 문제"
     }
   }
 }

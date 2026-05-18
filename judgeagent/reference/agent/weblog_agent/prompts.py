@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+import hashlib
+from typing import Dict
+
 PROMPT_TEMPLATE_NAME = "weblog-react-agent-prompt"
 PROMPT_TEMPLATE_VERSION = "0.3.0"
 
@@ -63,3 +68,22 @@ OUTPUT_CONTRACT = """Return markdown with these sections:
 ## Recommended Actions
 ## Confidence & Limitations
 """
+
+
+def prompt_sections() -> Dict[str, str]:
+    return {
+        "system": SYSTEM_PROMPT,
+        "react_protocol": REACT_PROTOCOL,
+        "tool_policy": TOOL_POLICY,
+        "output_contract": OUTPUT_CONTRACT,
+    }
+
+
+def prompt_template_hash() -> str:
+    parts = prompt_sections()
+    body = "\n--- prompt-section ---\n".join(parts[key] for key in sorted(parts))
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def prompt_contract_hash() -> str:
+    return hashlib.sha256(OUTPUT_CONTRACT.encode("utf-8")).hexdigest()

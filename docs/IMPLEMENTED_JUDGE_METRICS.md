@@ -1,12 +1,12 @@
 # 실제 구현 기준 Judge Metrics 지표
 
-> 기준: `judgeagent/judge_agent/analysis/detectors.py`에서 실제로 `Finding.metric`으로 생성되는 지표만 정리합니다.
+> 기준: 실제 코드에서 `Finding.metric`으로 생성되는 지표만 정리합니다.
 
 ## 1. 요약
 
-현재 구현된 detector는 다음 **11개** metric을 실제 finding으로 생성합니다.
+현재 구현된 metric은 **15개**입니다.
 
-| No | 구현 metric | 기본 severity | 판단 영역 | detector method |
+| No | 구현 metric | 기본 severity | 판단 영역 | detector/comparator |
 | --- | --- | --- | --- | --- |
 | 1 | `output_contract_compliance` | critical/high | Prompt / Instruction | `output_contract()` |
 | 2 | `target_endpoint_consistency` | high | Tool Use | `wrong_endpoint()` |
@@ -19,6 +19,10 @@
 | 9 | `chat_context_grounding` | medium/low | Context / Retrieval | `chat_context()` |
 | 10 | `output_format_compliance` | medium | Prompt / Instruction | `output_format_compliance()` |
 | 11 | `prompt_template_version_present` | low | Prompt / Instruction | `prompt_template_version()` |
+| 12 | `prompt_version_regression_score` | critical/high | Prompt / Instruction | `detect_prompt_regressions()` |
+| 13 | `gate_regression` | critical/high | Prompt / Instruction | `detect_prompt_regressions()` |
+| 14 | `new_high_severity_findings` | critical/high | Prompt / Instruction | `detect_prompt_regressions()` |
+| 15 | `tool_and_output_stability_score` | medium/high | Prompt / Instruction | `detect_prompt_regressions()` |
 
 ## 2. 구현 기준 상세 지표
 
@@ -198,8 +202,66 @@
 | Implemented Failure Rule | prompt template name/version missing |
 | Confidence | 0.90 |
 
-## 3. 점수와 Gate 계산
+### 2.12 `prompt_version_regression_score`
 
-```text
-score = max(0, 100 - sum(severity_penalty for each finding))
-```
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | High |
+| Actual Severity | critical/high |
+| Measurement Method | baseline/candidate comparison |
+| Value Type | 0 ~ 100 |
+| Description | prompt 변경 후 score/gate/finding 악화를 종합한 regression score. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate AnalysisResult |
+| Trace Fields Used | baseline.score, candidate.score, gate delta, new findings |
+| Implemented Failure Rule | regression score < 85 |
+| Confidence | 0.90 |
+
+### 2.13 `gate_regression`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | Critical |
+| Actual Severity | critical/high |
+| Measurement Method | baseline/candidate gate comparison |
+| Value Type | pass/fail |
+| Description | 동일 fixture/input에서 prompt 변경 후 gate가 pass→warning/block 또는 warning→block으로 악화되었는지. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate AnalysisResult |
+| Trace Fields Used | baseline.gate, candidate.gate |
+| Implemented Failure Rule | candidate gate rank > baseline gate rank |
+| Confidence | 0.98 |
+
+### 2.14 `new_high_severity_findings`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | High |
+| Actual Severity | critical/high |
+| Measurement Method | finding set diff |
+| Value Type | count |
+| Description | prompt 변경 후 candidate run에 새 high/critical finding이 생겼는지. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate findings |
+| Trace Fields Used | finding metric/category/location/evidence diff |
+| Implemented Failure Rule | candidate introduces new high/critical findings |
+| Confidence | 0.95 |
+
+### 2.15 `tool_and_output_stability_score`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | Medium |
+| Actual Severity | medium/high |
+| Measurement Method | trace sequence + output contract comparison |
+| Value Type | 0.0 ~ 1.0 |
+| Description | prompt 변경 후 tool sequence, validation path, target grounding, output format이 안정적으로 유지되는지. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate trace events |
+| Trace Fields Used | tool_start sequence, validation path, output compliance, target endpoint findings |
+| Implemented Failure Rule | stability score < 0.85 |
+| Confidence | 0.86 |

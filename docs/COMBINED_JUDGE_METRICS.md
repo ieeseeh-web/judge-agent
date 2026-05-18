@@ -1,19 +1,19 @@
 # Judge Metrics 통합 지표표
 
-> 기준: `judgeagent/judge_agent/config/metrics.json`의 전체 계획 지표와 `ReferenceWebLogDetector`에서 실제 `Finding.metric`으로 생성되는 구현 지표를 합쳐 정리했습니다.
+> 기준: `judgeagent/judge_agent/config/metrics.json`의 전체 계획 지표와 실제 `Finding.metric`으로 생성되는 구현 지표를 합쳐 정리했습니다.
 
 ## 1. 요약
 
-- 전체 계획/후보 지표: **36개**
-- 실제 구현 지표: **11개**
+- 전체 계획/후보 지표: **40개**
+- 실제 구현 지표: **15개**
 - 미구현/계획 지표: **25개**
 
 ## 2. 상태 정의
 
 | Status | 의미 |
 | --- | --- |
-| `Implemented` | 현재 detector 코드에서 실제 trace/event 값을 읽어 `Finding.metric`으로 생성하는 지표 |
-| `Planned` | `metrics.json`/기획 문서에는 있으나 현재 detector에서 finding으로 생성하지 않는 지표 |
+| `Implemented` | 현재 코드에서 trace/event 또는 baseline/candidate 비교값을 읽어 `Finding.metric`으로 생성하는 지표 |
+| `Planned` | `metrics.json`/기획 문서에는 있으나 현재 finding으로 생성하지 않는 지표 |
 
 ## 3. 통합 지표표
 
@@ -55,6 +55,10 @@
 | 34 | react_step_completeness | Planned | ReAct / RAG / MCP | High | - | rule + LLM judge | 0.0 ~ 1.0 | Thought/Action/Observation sequence가 완전한가. | - | - | - | - | - |
 | 35 | tool_result_grounding_score | Planned | Tool Use | High | - | LLM judge + rule | 0.0 ~ 1.0 | final output이 tool result와 일치하는지. | - | - | - | - | - |
 | 36 | tool_selection_accuracy | Planned | Tool Use | High | - | exact match / LLM judge | 0.0 ~ 1.0 | 선택한 tool이 task에 적절했는지. | - | - | - | - | - |
+| 37 | prompt_version_regression_score | Implemented | Prompt / Instruction | High | critical/high | baseline/candidate comparison | 0 ~ 100 | prompt 변경 후 score/gate/finding 악화를 종합한 regression score. | detect_prompt_regressions() | baseline/candidate AnalysisResult | regression score < 85 | - | - |
+| 38 | gate_regression | Implemented | Prompt / Instruction | Critical | critical/high | baseline/candidate gate comparison | pass/fail | 동일 fixture/input에서 prompt 변경 후 gate가 pass→warning/block 또는 warning→block으로 악화되었는지. | detect_prompt_regressions() | baseline/candidate AnalysisResult | candidate gate rank > baseline gate rank | - | - |
+| 39 | new_high_severity_findings | Implemented | Prompt / Instruction | High | critical/high | finding set diff | count | prompt 변경 후 candidate run에 새 high/critical finding이 생겼는지. | detect_prompt_regressions() | baseline/candidate findings | candidate introduces new high/critical findings | - | - |
+| 40 | tool_and_output_stability_score | Implemented | Prompt / Instruction | Medium | medium/high | trace sequence + output contract comparison | 0.0 ~ 1.0 | prompt 변경 후 tool sequence, validation path, target grounding, output format이 안정적으로 유지되는지. | detect_prompt_regressions() | baseline/candidate trace events | stability score < 0.85 | - | - |
 
 ## 4. 실제 구현 지표 상세
 
@@ -234,9 +238,73 @@
 | Implemented Failure Rule | prompt template name/version missing |
 | Confidence | 0.90 |
 
+### 4.12 `prompt_version_regression_score`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | High |
+| Actual Severity | critical/high |
+| Measurement Method | baseline/candidate comparison |
+| Value Type | 0 ~ 100 |
+| Description | prompt 변경 후 score/gate/finding 악화를 종합한 regression score. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate AnalysisResult |
+| Trace Fields Used | baseline.score, candidate.score, gate delta, new findings |
+| Implemented Failure Rule | regression score < 85 |
+| Confidence | 0.90 |
+
+### 4.13 `gate_regression`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | Critical |
+| Actual Severity | critical/high |
+| Measurement Method | baseline/candidate gate comparison |
+| Value Type | pass/fail |
+| Description | 동일 fixture/input에서 prompt 변경 후 gate가 pass→warning/block 또는 warning→block으로 악화되었는지. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate AnalysisResult |
+| Trace Fields Used | baseline.gate, candidate.gate |
+| Implemented Failure Rule | candidate gate rank > baseline gate rank |
+| Confidence | 0.98 |
+
+### 4.14 `new_high_severity_findings`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | High |
+| Actual Severity | critical/high |
+| Measurement Method | finding set diff |
+| Value Type | count |
+| Description | prompt 변경 후 candidate run에 새 high/critical finding이 생겼는지. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate findings |
+| Trace Fields Used | finding metric/category/location/evidence diff |
+| Implemented Failure Rule | candidate introduces new high/critical findings |
+| Confidence | 0.95 |
+
+### 4.15 `tool_and_output_stability_score`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | Medium |
+| Actual Severity | medium/high |
+| Measurement Method | trace sequence + output contract comparison |
+| Value Type | 0.0 ~ 1.0 |
+| Description | prompt 변경 후 tool sequence, validation path, target grounding, output format이 안정적으로 유지되는지. |
+| Detector Method | detect_prompt_regressions() |
+| Trace Events Used | baseline/candidate trace events |
+| Trace Fields Used | tool_start sequence, validation path, output compliance, target endpoint findings |
+| Implemented Failure Rule | stability score < 0.85 |
+| Confidence | 0.86 |
+
 ## 5. Score / Gate 계산
 
-실제 구현에서는 metric별 numeric score를 별도로 계산하지 않고, 생성된 finding들의 severity penalty 합으로 run score와 gate를 계산합니다.
+실제 구현에서는 metric별 numeric score를 별도로 계산하지 않고, 생성된 finding들의 severity penalty 합으로 run score와 gate를 계산합니다. Prompt regression 비교는 baseline/candidate의 score/gate/finding delta를 추가로 사용합니다.
 
 | Severity | Penalty |
 | --- | ---: |
@@ -248,26 +316,3 @@
 ```text
 score = max(0, 100 - sum(severity_penalty for each finding))
 ```
-
-| Gate | 조건 |
-| --- | --- |
-| `block` | critical finding 존재 또는 score < 70 |
-| `warning` | high finding 존재 또는 score < 85 |
-| `pass` | 그 외 |
-
-## 6. 관리 권장안
-
-1. `metrics.json`에 `implementation_status` 필드를 추가해 구현 여부를 registry 차원에서 관리합니다.
-2. 새 지표를 구현할 때는 trace event 수집, detector, metric registry, regression test를 함께 수정합니다.
-3. frontend에서는 `Implemented`와 `Planned`를 분리 표시해 실제 판단 가능한 지표와 로드맵 지표를 구분합니다.
-4. `docs/DRIFT_METRICS.xlsx`는 설계 원본, 이 문서는 구현 상태 추적용으로 사용합니다.
-
-## 7. 코드 기준 출처
-
-| 내용 | 파일 |
-| --- | --- |
-| 전체 계획/후보 지표 | `judgeagent/judge_agent/config/metrics.json` |
-| 실제 metric 생성 | `judgeagent/judge_agent/analysis/detectors.py` |
-| detector 설정 | `judgeagent/judge_agent/config/detector_rules.json` |
-| trace adapter | `judgeagent/judge_agent/adapters/reference.py` |
-| analyzer entrypoint | `judgeagent/judge_agent/analysis/analyzer.py` |

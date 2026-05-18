@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from . import tools
 from .llm import LLMClient, parse_json_object
 from .mcp import StdioMCPClient
-from .prompts import OUTPUT_CONTRACT, PROMPT_TEMPLATE_NAME, PROMPT_TEMPLATE_VERSION, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY
+from .prompts import OUTPUT_CONTRACT, PROMPT_TEMPLATE_NAME, PROMPT_TEMPLATE_VERSION, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY, prompt_contract_hash, prompt_sections, prompt_template_hash
 from .rag import LocalRunbookRetriever
 from .reporting import build_report
 from .state import WebLogAnalysisState
@@ -81,6 +81,9 @@ class WebLogAnalysisAgent:
             "instruction_snapshot",
             prompt_template_name=PROMPT_TEMPLATE_NAME,
             prompt_template_version=PROMPT_TEMPLATE_VERSION,
+            prompt_template_hash=prompt_template_hash(),
+            prompt_contract_hash=prompt_contract_hash(),
+            prompt_sections={key: {"present": bool(value), "sha256": __import__("hashlib").sha256(value.encode("utf-8")).hexdigest()} for key, value in prompt_sections().items()},
             system=SYSTEM_PROMPT,
             react_protocol=REACT_PROTOCOL,
             tool_policy=TOOL_POLICY,
@@ -146,6 +149,8 @@ class WebLogAnalysisAgent:
             prompt_template={
                 "name": PROMPT_TEMPLATE_NAME,
                 "version": PROMPT_TEMPLATE_VERSION,
+                "hash": prompt_template_hash(),
+                "contract_hash": prompt_contract_hash(),
                 "present": bool(PROMPT_TEMPLATE_NAME and PROMPT_TEMPLATE_VERSION),
             },
             output_format={
