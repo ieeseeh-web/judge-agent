@@ -30,5 +30,29 @@
     "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779112620760.conversation.json",
     "createdAt": 1779112620.77986,
     "updatedAt": 1779112620.77986
+  },
+  "session-1779112684875": {
+    "id": "session-1779112684875",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_225804_755",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779112684875.conversation.json",
+    "createdAt": 1779112684.900533,
+    "updatedAt": 1779112684.900534
+  },
+  "session-1779112698207": {
+    "id": "session-1779112698207",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_225818_081",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779112698207.conversation.json",
+    "createdAt": 1779112698.2313468,
+    "updatedAt": 1779112705.86253
+  },
+  "session-1779112722756": {
+    "id": "session-1779112722756",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_225842_616",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779112722756.conversation.json",
+    "createdAt": 1779112722.782409,
+    "updatedAt": 1779112727.2741241
   }
 }

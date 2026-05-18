@@ -33,5 +33,40 @@
     "jsonPath": "artifacts/frontend-api/prompt-regressions/results/preg_20260518_224032_758.json",
     "createdAt": 1779111632.823134,
     "updatedAt": 1779111632.823134
+  },
+  "preg_20260518_225814_683": {
+    "id": "preg_20260518_225814_683",
+    "status": "succeeded",
+    "adapter": "reference-weblog-jsonl",
+    "baseline": {
+      "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260518_225756_252_custom-analysis.jsonl",
+      "referenceRunId": "ref_20260518_225756_252_custom-analysis"
+    },
+    "candidate": {
+      "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260518_225810_804_custom-analysis.jsonl",
+      "referenceRunId": "ref_20260518_225810_804_custom-analysis"
+    },
+    "summary": {
+      "baselineRunId": "ref_20260518_225756_252_custom-analysis",
+      "candidateRunId": "ref_20260518_225810_804_custom-analysis",
+      "baselineGate": "pass",
+      "candidateGate": "pass",
+      "baselineScore": 100,
+      "candidateScore": 100,
+      "scoreDelta": 0,
+      "gateChanged": false,
+      "gateRegressed": false,
+      "newFindingCount": 0,
+      "newHighCriticalFindingCount": 0,
+      "resolvedFindingCount": 0,
+      "regressionScore": 100
+    },
+    "findings": [],
+    "newFindings": [],
+    "resolvedFindings": [],
+    "reportPath": "artifacts/frontend-api/prompt-regressions/reports/preg_20260518_225814_683.md",
+    "jsonPath": "artifacts/frontend-api/prompt-regressions/results/preg_20260518_225814_683.json",
+    "createdAt": 1779112694.7790039,
+    "updatedAt": 1779112694.7790039
   }
 }
