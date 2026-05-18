@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge Agent — 향후 개발 기능 요구사항 명세서</title>
+<style>
+  :root {
+    --primary: #1677ff;
+    --success: #52c41a;
+    --warning: #faad14;
+    --danger: #ff4d4f;
+    --gray-1: #f8f9fa;
+    --gray-2: #f0f0f0;
+    --gray-3: #d9d9d9;
+    --gray-7: #595959;
+    --gray-9: #1f1f1f;
+    --border-radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--gray-9);
+    background: #fafafa;
+  }
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* Header */
+  .doc-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    color: #fff;
+    padding: 48px 40px 36px;
+    border-radius: 12px;
+    margin-bottom: 40px;
+  }
+  .doc-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+  .doc-header .meta { font-size: 13px; color: #94a3b8; display: flex; gap: 24px; flex-wrap: wrap; }
+  .doc-header .meta span::before { content: '•'; margin-right: 6px; }
+
+  /* TOC */
+  .toc {
+    background: #fff;
+    border: 1px solid var(--gray-3);
+    border-radius: var(--border-radius);
+    padding: 24px 28px;
+    margin-bottom: 40px;
+  }
+  .toc h2 { font-size: 14px; font-weight: 600; color: var(--gray-7); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .toc ol { padding-left: 18px; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--primary); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Section */
+  section { margin-bottom: 48px; }
+  h2.section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--primary);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2.section-title .num {
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  h3.sub-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e3a5f;
+    margin: 28px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h3.sub-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 2px;
+  }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: var(--border-radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  th {
+    background: #1e3a5f;
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 11px 14px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--gray-2); vertical-align: top; font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--gray-1); }
+  tr:hover td { background: #eff6ff; }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-done   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .badge-p0     { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .badge-p1     { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .badge-p2     { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .badge-p3     { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .badge-s      { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+  .badge-m      { background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+  .badge-l      { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+  .badge-xl     { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+  .badge-phase1 { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .badge-phase2 { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  .badge-phase3 { background: #fdf4ff; color: #86198f; border: 1px solid #f0abfc; }
+  .badge-be  { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+  .badge-fe  { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+  .badge-fs  { background: #fff0f9; color: #9d174d; border: 1px solid #fbcfe8; }
+  .badge-do  { background: #f0f4ff; color: #3730a3; border: 1px solid #c7d2fe; }
+
+  /* Phase card */
+  .phase-card {
+    background: #fff;
+    border: 1px solid var(--gray-3);
+    border-radius: var(--border-radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .phase-card .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .phase-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .phase-1 .phase-icon { background: #eff6ff; color: #1d4ed8; }
+  .phase-2 .phase-icon { background: #f5f3ff; color: #6d28d9; }
+  .phase-3 .phase-icon { background: #fdf4ff; color: #86198f; }
+  .phase-card h4 { font-size: 16px; font-weight: 700; }
+  .phase-card p  { font-size: 13px; color: var(--gray-7); }
+  .fr-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .fr-item {
+    background: var(--gray-1);
+    border-radius: 6px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--gray-3);
+  }
+  .fr-item.high { border-left-color: #f97316; }
+  .fr-item.mid  { border-left-color: #a855f7; }
+  .fr-item.low  { border-left-color: #22c55e; }
+  .fr-item .fr-id { font-size: 11px; font-weight: 700; color: var(--gray-7); margin-bottom: 2px; }
+  .fr-item .fr-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .fr-item .fr-desc { font-size: 12px; color: var(--gray-7); }
+
+  /* Spec table */
+  .spec-block {
+    background: #fff;
+    border: 1px solid var(--gray-3);
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .spec-block .spec-header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .spec-block .spec-header .spec-id { font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; }
+  .spec-block .spec-header .spec-name { font-size: 15px; font-weight: 700; }
+  .spec-table { width: 100%; border-collapse: collapse; }
+  .spec-table th { width: 160px; background: #f8fafc; color: var(--gray-7); font-size: 12px; font-weight: 600; padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--gray-2); vertical-align: top; }
+  .spec-table td { padding: 10px 16px; border-bottom: 1px solid var(--gray-2); font-size: 13px; }
+  .spec-table tr:last-child th, .spec-table tr:last-child td { border-bottom: none; }
+
+  /* Roadmap */
+  .roadmap { position: relative; }
+  .roadmap-quarter {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .roadmap-q-label {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-top: 10px;
+  }
+  .roadmap-q-label .q { font-size: 12px; font-weight: 700; color: var(--primary); }
+  .roadmap-q-label .year { font-size: 11px; color: var(--gray-7); }
+  .roadmap-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .roadmap-dot { width: 14px; height: 14px; background: var(--primary); border-radius: 50%; margin-top: 13px; flex-shrink: 0; }
+  .roadmap-vert { width: 2px; flex: 1; background: var(--gray-3); min-height: 20px; margin: 4px 0; }
+  .roadmap-items {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--gray-3);
+    border-radius: var(--border-radius);
+    padding: 12px 16px;
+  }
+  .roadmap-items .q-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+  .roadmap-items .r-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--gray-7); margin-bottom: 4px; }
+  .roadmap-items .r-item::before { content: '→'; color: var(--primary); font-size: 11px; }
+  .roadmap-items .done::before { content: '✓'; color: var(--success); }
+  .roadmap-items .done { color: #166534; }
+
+  /* Code */
+  code { font-family: 'SF Mono', 'Menlo', monospace; font-size: 12px; background: var(--gray-2); padding: 1px 5px; border-radius: 3px; }
+
+  /* Footer */
+  .doc-footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--gray-3); color: var(--gray-7); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="doc-header">
+    <h1>Judge Agent — 향후 개발 기능 요구사항 명세서</h1>
+    <div class="meta">
+      <span>작성일: 2026-05-19</span>
+      <span>기준 버전: MVP v0.3.x</span>
+      <span>상태: 초안</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>목차</h2>
+    <ol>
+      <li><a href="#sec1">현재 구현 완료 기능 요약</a></li>
+      <li><a href="#sec2">기능 요구사항 (Feature Requirements)</a></li>
+      <li><a href="#sec3">기능 명세서 (Feature Specifications)</a></li>
+      <li><a href="#sec4">기능 항목 목록 (Feature Backlog)</a></li>
+      <li><a href="#sec5">로드맵 요약</a></li>
+    </ol>
+  </div>
+
+  <!-- Section 1 -->
+  <section id="sec1">
+    <h2 class="section-title"><span class="num">1</span>현재 구현 완료 기능 요약</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>영역</th><th>상태</th><th>주요 내용</th></tr></thead>
+        <tbody>
+          <tr><td>Reference Agent 채팅 UI</td><td><span class="badge badge-done">✅ 완료</span></td><td>대화형 질의, Examples 드롭다운, 모델 선택 드롭다운</td></tr>
+          <tr><td>Judge Agent 분석</td><td><span class="badge badge-done">✅ 완료</span></td><td>rule-based 7개 detector, score/gate 산출</td></tr>
+          <tr><td>Prompt Regression</td><td><span class="badge badge-done">✅ 완료</span></td><td>baseline/candidate 비교, 5가지 regression finding</td></tr>
+          <tr><td>Model Drift 감지</td><td><span class="badge badge-done">✅ 완료</span></td><td>per-run 모델 지정, model_change_detected finding</td></tr>
+          <tr><td>Prompt 편집 &amp; 히스토리</td><td><span class="badge badge-done">✅ 완료</span></td><td>팝업 모달, localStorage 기반 30개 히스토리</td></tr>
+          <tr><td>드래그 리사이저 레이아웃</td><td><span class="badge badge-done">✅ 완료</span></td><td>좌/우, 상/하 패널 크기 자유 조절</td></tr>
+          <tr><td>로컬 LLM 연동 (Ollama)</td><td><span class="badge badge-done">✅ 완료</span></td><td>Ollama, vLLM, LM Studio 등 OpenAI-compatible</td></tr>
+          <tr><td>REST API</td><td><span class="badge badge-done">✅ 완료</span></td><td>9개 리소스 엔드포인트 (FastAPI)</td></tr>
+          <tr><td>CLI 도구</td><td><span class="badge badge-done">✅ 완료</span></td><td>analyze, analyze-batch, chat, compare-prompt-regression</td></tr>
+          <tr><td>파일 기반 저장소</td><td><span class="badge badge-done">✅ 완료</span></td><td>artifacts/ 디렉터리 + registry.json</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 2 -->
+  <section id="sec2">
+    <h2 class="section-title"><span class="num">2</span>기능 요구사항 (Feature Requirements)</h2>
+
+    <div class="phase-card phase-1">
+      <div class="phase-header">
+        <div class="phase-icon">1</div>
+        <div><h4>Phase 1 — 탐지 품질 강화</h4><p>현재 7개 detector와 10개 메트릭을 확장하고 LangChain 어댑터를 추가</p></div>
+      </div>
+      <ul class="fr-list">
+        <li class="fr-item high">
+          <div class="fr-id">FR-101</div>
+          <div class="fr-name">Detector 확장</div>
+          <div class="fr-desc">tool_argument_mismatch, repeated_tool_call, context_hallucination, memory_staleness, goal_drift 5개 신규 detector 추가. 현재 7개 → 12개.</div>
+        </li>
+        <li class="fr-item high">
+          <div class="fr-id">FR-102</div>
+          <div class="fr-name">LLM Judge 강화</div>
+          <div class="fr-desc">reference-based LLM judge(기준 run과 비교) 및 reference-free LLM judge(독립 평가)를 지원. 현재 deterministic rule만 존재.</div>
+        </li>
+        <li class="fr-item mid">
+          <div class="fr-id">FR-103</div>
+          <div class="fr-name">메트릭 확장</div>
+          <div class="fr-desc">task_completion_rate, tool_argument_correctness, context_groundedness 등 추가. ~10개 → ~40개 단계적 구현.</div>
+        </li>
+        <li class="fr-item high">
+          <div class="fr-id">FR-104</div>
+          <div class="fr-name">Generic LangChain/LangGraph 어댑터</div>
+          <div class="fr-desc">현재 reference-weblog-jsonl 전용 어댑터 외에 범용 LangChain 트레이스 파싱 어댑터 구현. 실제 LangChain 프로젝트에 Judge Agent 직접 적용 가능.</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="phase-card phase-2">
+      <div class="phase-header">
+        <div class="phase-icon">2</div>
+        <div><h4>Phase 2 — 사용성 개선</h4><p>히스토리 조회, 파일 업로드, 다중 Run 비교, 채팅 세션 복원</p></div>
+      </div>
+      <ul class="fr-list">
+        <li class="fr-item high">
+          <div class="fr-id">FR-201</div>
+          <div class="fr-name">실행 히스토리 조회 UI</div>
+          <div class="fr-desc">과거 Reference Run 목록을 날짜/fixture/모델별 필터링하고, 특정 run을 선택해 트레이스·결과를 다시 확인. 선택한 run을 Judge / Set baseline 에 재사용.</div>
+        </li>
+        <li class="fr-item mid">
+          <div class="fr-id">FR-202</div>
+          <div class="fr-name">트레이스 파일 직접 업로드</div>
+          <div class="fr-desc">외부에서 생성된 JSONL 트레이스 파일을 UI에서 업로드하면 Judge Agent가 분석. TraceUploadCard 컴포넌트 기존 존재, 백엔드 연결 필요.</div>
+        </li>
+        <li class="fr-item mid">
+          <div class="fr-id">FR-203</div>
+          <div class="fr-name">다중 Run 비교 대시보드</div>
+          <div class="fr-desc">2개 run 비교(현재)를 넘어 N개 run을 선택해 메트릭 변화 추이를 차트로 시각화. 반복 실험 시 추세 파악 필요.</div>
+        </li>
+        <li class="fr-item mid">
+          <div class="fr-id">FR-205</div>
+          <div class="fr-name">채팅 세션 히스토리 저장/복원</div>
+          <div class="fr-desc">Reference Agent 채팅 대화 내역을 저장하고 추후 동일 세션을 불러와 이어서 대화. 현재 페이지 새로고침 시 대화 소실.</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="phase-card phase-3">
+      <div class="phase-header">
+        <div class="phase-icon">3</div>
+        <div><h4>Phase 3 — 확장성 &amp; 운영</h4><p>DB 저장소, CI/CD 통합, API 인증, 실시간 스트리밍</p></div>
+      </div>
+      <ul class="fr-list">
+        <li class="fr-item high">
+          <div class="fr-id">FR-301</div>
+          <div class="fr-name">DB 기반 저장소</div>
+          <div class="fr-desc">파일 기반(registry.json) → SQLite(단독) → PostgreSQL(다중 사용자). 동시 요청 run_id 충돌 문제 근본 해결.</div>
+        </li>
+        <li class="fr-item high">
+          <div class="fr-id">FR-303</div>
+          <div class="fr-name">CI/CD 통합 강화</div>
+          <div class="fr-desc">GitHub Actions / GitLab CI 워크플로 템플릿 제공. PR 머지 전 prompt regression 자동 실행 및 PR 코멘트 게시.</div>
+        </li>
+        <li class="fr-item mid">
+          <div class="fr-id">FR-305</div>
+          <div class="fr-name">실시간 스트리밍 응답</div>
+          <div class="fr-desc">LLM 토큰 생성 시 채팅 UI에 실시간 표시. 26B 모델 사용 시 응답 대기 시간 긴 UX 문제 해결. SSE 또는 WebSocket.</div>
+        </li>
+        <li class="fr-item low">
+          <div class="fr-id">FR-306</div>
+          <div class="fr-name">인간 피드백 루프</div>
+          <div class="fr-desc">Judge 분석 결과에 동의/반박 피드백을 수집·저장해 detector 임계값 조정에 활용. Judge 정확도 지속 개선.</div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 3 -->
+  <section id="sec3">
+    <h2 class="section-title"><span class="num">3</span>기능 명세서 (Feature Specifications)</h2>
+
+    <div class="spec-block">
+      <div class="spec-header"><span class="spec-id">FS-101</span><span class="spec-name">Detector 확장</span></div>
+      <table class="spec-table">
+        <tr><th>관련 FR</th><td>FR-101</td></tr>
+        <tr><th>입력</th><td>SimpleAgentRun (trace 이벤트 시퀀스)</td></tr>
+        <tr><th>처리</th><td>신규 rule-based 검사 추가 — 도구 인수 오류, 컨텍스트 불일치, 반복 호출, 메모리 오염, 목표 드리프트</td></tr>
+        <tr><th>출력</th><td>Finding 목록 (metric, severity, confidence, evidence)</td></tr>
+        <tr><th>구현 위치</th><td><code>judgeagent/judge_agent/analysis/detectors.py</code></td></tr>
+        <tr><th>설정 위치</th><td><code>judgeagent/judge_agent/config/detector_rules.json</code></td></tr>
+        <tr><th>신규 Detector 항목</th><td>tool_argument_mismatch, repeated_tool_call, context_hallucination, memory_staleness, goal_drift</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-block">
+      <div class="spec-header"><span class="spec-id">FS-102</span><span class="spec-name">Generic LangChain/LangGraph 어댑터</span></div>
+      <table class="spec-table">
+        <tr><th>관련 FR</th><td>FR-104</td></tr>
+        <tr><th>입력</th><td>LangChain JSONL 트레이스 또는 LangSmith Export</td></tr>
+        <tr><th>처리</th><td>이벤트 정규화 → SimpleAgentRun 변환</td></tr>
+        <tr><th>출력</th><td>SimpleAgentRun (기존 분석 파이프라인과 호환)</td></tr>
+        <tr><th>구현 위치</th><td><code>judgeagent/judge_agent/adapters/langchain.py</code> (신규)</td></tr>
+        <tr><th>API 변경</th><td><code>POST /api/analyses</code> 의 <code>adapter</code> 필드에 <code>langchain-jsonl</code> 값 추가</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-block">
+      <div class="spec-header"><span class="spec-id">FS-201</span><span class="spec-name">Reference Run 히스토리 조회 UI</span></div>
+      <table class="spec-table">
+        <tr><th>관련 FR</th><td>FR-201</td></tr>
+        <tr><th>UI 위치</th><td>좌측 Reference Agent 패널 상단 탭 또는 별도 사이드 패널</td></tr>
+        <tr><th>필터 조건</th><td>날짜 범위, fixture ID, 모델명, 실행 상태</td></tr>
+        <tr><th>표시 항목</th><td>run ID, 실행 시각, 사용 모델, 상태(SUCCEEDED/FAILED), eventCounts 요약</td></tr>
+        <tr><th>액션</th><td>선택한 run을 Judge / Set baseline에 재사용, 트레이스 상세 펼치기</td></tr>
+        <tr><th>백엔드</th><td><code>GET /api/reference/runs</code> + 필터 파라미터 <code>?fixture=&amp;model=&amp;status=&amp;from=&amp;to=</code> 추가</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-block">
+      <div class="spec-header"><span class="spec-id">FS-301</span><span class="spec-name">DB 기반 저장소 마이그레이션</span></div>
+      <table class="spec-table">
+        <tr><th>관련 FR</th><td>FR-301</td></tr>
+        <tr><th>1단계</th><td>ApiStore → SQLite (파일 1개, 동시성 안전, 운영 단순)</td></tr>
+        <tr><th>2단계</th><td>SQLite → PostgreSQL (다중 사용자/서버 환경)</td></tr>
+        <tr><th>테이블 목록</th><td>reference_runs, analyses, judge_sessions, prompt_regressions</td></tr>
+        <tr><th>구현 위치</th><td><code>judgeagent/backend/api_store.py</code> 교체 (인터페이스 유지)</td></tr>
+        <tr><th>마이그레이션</th><td>기존 <code>artifacts/registry.json</code> → DB 임포트 스크립트 제공</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-block">
+      <div class="spec-header"><span class="spec-id">FS-303</span><span class="spec-name">CI/CD 통합 — GitHub Actions</span></div>
+      <table class="spec-table">
+        <tr><th>관련 FR</th><td>FR-303</td></tr>
+        <tr><th>제공 파일</th><td><code>.github/workflows/judge-regression.yml</code> 템플릿</td></tr>
+        <tr><th>트리거</th><td>PR 오픈/업데이트 시 자동 실행</td></tr>
+        <tr><th>동작 순서</th><td>① baseline 트레이스 로드 → ② candidate 실행 → ③ <code>--fail-on-regression</code> 검사 → ④ PR 코멘트 게시</td></tr>
+        <tr><th>출력</th><td>PR 코멘트: regression score, gate, 주요 finding 요약</td></tr>
+      </table>
+    </div>
+
+    <div class="spec-block">
+      <div class="spec-header"><span class="spec-id">FS-305</span><span class="spec-name">실시간 LLM 응답 스트리밍</span></div>
+      <table class="spec-table">
+        <tr><th>관련 FR</th><td>FR-305</td></tr>
+        <tr><th>프로토콜</th><td>Server-Sent Events (SSE) — 단방향, 연결 단순</td></tr>
+        <tr><th>신규 엔드포인트</th><td><code>GET /api/reference/runs/stream</code></td></tr>
+        <tr><th>이벤트 포맷</th><td><code>data: {"type": "token", "content": "..."}\n\n</code></td></tr>
+        <tr><th>프론트엔드</th><td>AgentBubble 컴포넌트에 실시간 토큰 append (EventSource API)</td></tr>
+        <tr><th>지원 모델</th><td>Ollama (모든 모델), OpenAI (스트리밍 지원 모델)</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 4 -->
+  <section id="sec4">
+    <h2 class="section-title"><span class="num">4</span>기능 항목 목록 (Feature Backlog)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>기능명</th><th>Phase</th><th>우선순위</th><th>규모</th><th>영역</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>F-101</td><td>tool_argument_mismatch detector</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-102</td><td>repeated_tool_call detector</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-103</td><td>context_hallucination detector</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-104</td><td>memory_staleness detector</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-105</td><td>goal_drift detector</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-106</td><td>Reference-based LLM Judge</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-107</td><td>Reference-free LLM Judge</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-108</td><td>task_completion_rate 메트릭</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-109</td><td>tool_argument_correctness 메트릭</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-110</td><td>context_groundedness 메트릭</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-111</td><td>Generic LangChain JSONL 어댑터</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-112</td><td>LangSmith Export 어댑터</td><td><span class="badge badge-phase1">Phase 1</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-201</td><td>Reference Run 히스토리 조회 UI</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-fe">Frontend</span></td></tr>
+          <tr><td>F-202</td><td>Run 히스토리 필터 (날짜/모델/상태)</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-fe">Frontend</span></td></tr>
+          <tr><td>F-203</td><td>트레이스 파일 업로드 UI 연결</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-fs">Full-stack</span></td></tr>
+          <tr><td>F-204</td><td>N개 Run 메트릭 추세 차트</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-fe">Frontend</span></td></tr>
+          <tr><td>F-205</td><td>결과 PDF/CSV 내보내기</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p3">P3</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-fe">Frontend</span></td></tr>
+          <tr><td>F-206</td><td>채팅 세션 히스토리 저장/복원</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-fs">Full-stack</span></td></tr>
+          <tr><td>F-207</td><td>다크 모드 UI</td><td><span class="badge badge-phase2">Phase 2</span></td><td><span class="badge badge-p3">P3</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-fe">Frontend</span></td></tr>
+          <tr><td>F-301</td><td>SQLite 기반 저장소 마이그레이션</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-302</td><td>PostgreSQL 마이그레이션</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-303</td><td>GitHub Actions 워크플로 템플릿</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-do">DevOps</span></td></tr>
+          <tr><td>F-304</td><td>GitLab CI 워크플로 템플릿</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-do">DevOps</span></td></tr>
+          <tr><td>F-305</td><td>PR 코멘트 regression 리포트 게시</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-do">DevOps</span></td></tr>
+          <tr><td>F-306</td><td>API Key 인증 추가</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-m">M</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-307</td><td>Slack Webhook 알림</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-s">S</span></td><td><span class="badge badge-be">Backend</span></td></tr>
+          <tr><td>F-308</td><td>SSE 기반 LLM 스트리밍</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-l">L</span></td><td><span class="badge badge-fs">Full-stack</span></td></tr>
+          <tr><td>F-309</td><td>인간 피드백 루프</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p3">P3</span></td><td><span class="badge badge-xl">XL</span></td><td><span class="badge badge-fs">Full-stack</span></td></tr>
+          <tr><td>F-310</td><td>멀티테넌트 사용자 관리</td><td><span class="badge badge-phase3">Phase 3</span></td><td><span class="badge badge-p3">P3</span></td><td><span class="badge badge-xl">XL</span></td><td><span class="badge badge-fs">Full-stack</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px;font-size:12px;color:#595959;">
+      규모: <strong>S</strong> 1~2일 &nbsp;|&nbsp; <strong>M</strong> 3~5일 &nbsp;|&nbsp; <strong>L</strong> 1~2주 &nbsp;|&nbsp; <strong>XL</strong> 2주+
+    </p>
+  </section>
+
+  <!-- Section 5 -->
+  <section id="sec5">
+    <h2 class="section-title"><span class="num">5</span>로드맵 요약</h2>
+    <div class="roadmap">
+      <div class="roadmap-quarter">
+        <div class="roadmap-q-label"><div class="q">Q2</div><div class="year">2026</div></div>
+        <div class="roadmap-line"><div class="roadmap-dot" style="background:#52c41a"></div><div class="roadmap-vert"></div></div>
+        <div class="roadmap-items">
+          <div class="q-title">✅ MVP 완료</div>
+          <div class="r-item done">대화형 Reference Agent 채팅 UI</div>
+          <div class="r-item done">Prompt Regression (5개 finding)</div>
+          <div class="r-item done">Model Drift 감지 & 모델 선택 드롭다운</div>
+          <div class="r-item done">Ollama / 로컬 LLM 연동</div>
+          <div class="r-item done">드래그 리사이저 레이아웃</div>
+        </div>
+      </div>
+      <div class="roadmap-quarter">
+        <div class="roadmap-q-label"><div class="q">Q3</div><div class="year">2026</div></div>
+        <div class="roadmap-line"><div class="roadmap-dot"></div><div class="roadmap-vert"></div></div>
+        <div class="roadmap-items">
+          <div class="q-title">Phase 1 — 탐지 품질 강화</div>
+          <div class="r-item">F-101~103: Detector 3개 추가 (tool, context, repeated)</div>
+          <div class="r-item">F-106: Reference-based LLM Judge</div>
+          <div class="r-item">F-108~109: 메트릭 2개 추가</div>
+          <div class="r-item">F-111: Generic LangChain 어댑터</div>
+        </div>
+      </div>
+      <div class="roadmap-quarter">
+        <div class="roadmap-q-label"><div class="q">Q4</div><div class="year">2026</div></div>
+        <div class="roadmap-line"><div class="roadmap-dot"></div><div class="roadmap-vert"></div></div>
+        <div class="roadmap-items">
+          <div class="q-title">Phase 2 — 사용성 개선</div>
+          <div class="r-item">F-201~202: Run 히스토리 조회 UI & 필터</div>
+          <div class="r-item">F-203: 트레이스 파일 업로드 연결</div>
+          <div class="r-item">F-206: 채팅 세션 히스토리 저장/복원</div>
+          <div class="r-item">F-204: N개 Run 메트릭 추세 차트</div>
+        </div>
+      </div>
+      <div class="roadmap-quarter">
+        <div class="roadmap-q-label"><div class="q">Q1</div><div class="year">2027</div></div>
+        <div class="roadmap-line"><div class="roadmap-dot"></div><div class="roadmap-vert"></div></div>
+        <div class="roadmap-items">
+          <div class="q-title">Phase 3 — 운영 강화</div>
+          <div class="r-item">F-301: SQLite 기반 저장소 마이그레이션</div>
+          <div class="r-item">F-303~305: GitHub Actions CI/CD 통합</div>
+          <div class="r-item">F-307: Slack Webhook 알림</div>
+          <div class="r-item">F-308: SSE 실시간 스트리밍</div>
+        </div>
+      </div>
+      <div class="roadmap-quarter">
+        <div class="roadmap-q-label"><div class="q">Q2+</div><div class="year">2027</div></div>
+        <div class="roadmap-line"><div class="roadmap-dot" style="background:#d9d9d9"></div></div>
+        <div class="roadmap-items">
+          <div class="q-title">장기 계획</div>
+          <div class="r-item">F-302: PostgreSQL 마이그레이션</div>
+          <div class="r-item">F-309: 인간 피드백 루프</div>
+          <div class="r-item">F-310: 멀티테넌트 사용자 관리</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="doc-footer">
+    <span>Judge Agent Project &copy; 2026</span>
+    <span>문서 경로: <code>docs/FUTURE_DEVELOPMENT_REQUIREMENTS.html</code></span>
+  </div>
+</div>
+</body>
+</html>
