@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { PromptOverrides, ReferencePromptDefaults, ReferenceRun } from '../types/judge';
 import { ReferenceChatView } from './ReferenceChatView';
-import { Card, Select, Button, Space, Typography, Tag, Divider, Row, Col, Modal, Input } from 'antd';
-import { PlayCircleOutlined, ExperimentOutlined, BranchesOutlined, FlagOutlined, EditOutlined } from '@ant-design/icons';
+import { Card, Select, Button, Space, Typography, Tag, Divider, Row, Col, Modal, Input, Tabs, Tooltip, Popconfirm, Empty } from 'antd';
+import { PlayCircleOutlined, ExperimentOutlined, BranchesOutlined, FlagOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, RollbackOutlined } from '@ant-design/icons';
+import { usePromptHistory } from '../hooks/usePromptHistory';
+import type { PromptHistoryEntry } from '../hooks/usePromptHistory';
 
 const { Title, Text } = Typography;
 
@@ -17,6 +19,62 @@ type ReferenceAgentPanelProps = {
   isLoading?: boolean;
 };
 
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function HistoryList({ history, onLoad, onRemove, onClear }: {
+  history: PromptHistoryEntry[];
+  onLoad: (entry: PromptHistoryEntry) => void;
+  onRemove: (id: string) => void;
+  onClear: () => void;
+}) {
+  if (history.length === 0) {
+    return <Empty description="저장된 히스토리가 없습니다" style={{ padding: '32px 0' }} />;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Popconfirm title="전체 히스토리를 삭제할까요?" onConfirm={onClear} okText="삭제" cancelText="취소">
+          <Button size="small" danger icon={<DeleteOutlined />}>전체 삭제</Button>
+        </Popconfirm>
+      </div>
+      {history.map((entry) => {
+        const fields = [
+          entry.system && 'system',
+          entry.toolPolicy && 'tool_policy',
+          entry.outputContract && 'output_contract',
+        ].filter(Boolean) as string[];
+        return (
+          <div key={entry.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', background: '#fafafa', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                <Text style={{ fontSize: '0.72rem', color: '#94a3b8', flexShrink: 0 }}>{formatDate(entry.savedAt)}</Text>
+                <Tag color="blue" style={{ fontSize: '0.7rem', margin: 0 }}>{entry.variant}</Tag>
+                {fields.map(f => <Tag key={f} style={{ fontSize: '0.68rem', margin: 0 }}>{f}</Tag>)}
+              </div>
+              {entry.system && (
+                <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {entry.system.slice(0, 80)}…
+                </Text>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              <Tooltip title="이 프롬프트 불러오기">
+                <Button size="small" icon={<RollbackOutlined />} onClick={() => onLoad(entry)}>Load</Button>
+              </Tooltip>
+              <Tooltip title="삭제">
+                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onRemove(entry.id)} />
+              </Tooltip>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaseline, onComparePromptRegression, baselineRun, defaultPrompts, isLoading }: ReferenceAgentPanelProps) {
   const [selectedFixture, setSelectedFixture] = useState(referenceRun.fixture || 'normal-login-error-spike');
   const [selectedMode, setSelectedMode] = useState('hybrid');
@@ -25,6 +83,8 @@ export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaselin
   const [toolPolicy, setToolPolicy] = useState('');
   const [outputContract, setOutputContract] = useState('');
   const [promptModalOpen, setPromptModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<'edit' | 'history'>('edit');
+  const { history, save, remove, clear } = usePromptHistory();
 
   const loadDefaultPrompts = () => {
     if (!defaultPrompts) return;
@@ -45,6 +105,23 @@ export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaselin
     if (toolPolicy.trim() && toolPolicy !== defaultPrompts?.tool_policy) promptOverrides.tool_policy = toolPolicy;
     if (outputContract.trim() && outputContract !== defaultPrompts?.output_contract) promptOverrides.output_contract = outputContract;
     return Object.keys(promptOverrides).length > 1 ? promptOverrides : undefined;
+  };
+
+  const handleDone = () => {
+    const hasEdit = systemPrompt.trim() || toolPolicy.trim() || outputContract.trim();
+    if (hasEdit) {
+      save({ variant: promptVariant || 'candidate-edit', system: systemPrompt, toolPolicy, outputContract });
+    }
+    setPromptModalOpen(false);
+    setModalTab('edit');
+  };
+
+  const handleLoadHistory = (entry: PromptHistoryEntry) => {
+    setPromptVariant(entry.variant);
+    setSystemPrompt(entry.system);
+    setToolPolicy(entry.toolPolicy);
+    setOutputContract(entry.outputContract);
+    setModalTab('edit');
   };
 
   const handleRun = () => {
@@ -107,37 +184,63 @@ export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaselin
             <Modal
               title="Prompt edit for candidate run"
               open={promptModalOpen}
-              onCancel={() => setPromptModalOpen(false)}
+              onCancel={handleDone}
               footer={null}
-              width={680}
+              width={720}
               destroyOnHidden
             >
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <Text type="secondary" style={{ fontSize: '0.78rem' }}>Baseline은 prompt edit을 비운 기본 prompt로 실행한 뒤 Set baseline 하세요. Candidate는 Load default prompts로 현재 prompt를 불러와 실제 문구를 수정한 뒤 실행합니다.</Text>
-                <Space>
-                  <Button size="small" onClick={loadDefaultPrompts} disabled={!defaultPrompts}>Load default prompts</Button>
-                  <Button size="small" onClick={clearPromptEdits}>Clear edits / run default prompt</Button>
-                </Space>
-                <div>
-                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Prompt variant label</Text>
-                  <Input value={promptVariant} onChange={(e) => setPromptVariant(e.target.value)} placeholder="prompt variant label" />
-                </div>
-                <div>
-                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>System Prompt</Text>
-                  <Input.TextArea rows={4} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} placeholder="Override SYSTEM_PROMPT for candidate run (optional)" />
-                </div>
-                <div>
-                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Tool Policy</Text>
-                  <Input.TextArea rows={4} value={toolPolicy} onChange={(e) => setToolPolicy(e.target.value)} placeholder="Override TOOL_POLICY for candidate run (optional)" />
-                </div>
-                <div>
-                  <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Output Contract</Text>
-                  <Input.TextArea rows={5} value={outputContract} onChange={(e) => setOutputContract(e.target.value)} placeholder="Override OUTPUT_CONTRACT for candidate run (optional)" />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button type="primary" onClick={() => setPromptModalOpen(false)}>Done</Button>
-                </div>
-              </Space>
+              <Tabs
+                activeKey={modalTab}
+                onChange={(k) => setModalTab(k as 'edit' | 'history')}
+                items={[
+                  {
+                    key: 'edit',
+                    label: <span><EditOutlined /> Edit</span>,
+                    children: (
+                      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Text type="secondary" style={{ fontSize: '0.78rem' }}>Baseline은 prompt edit을 비운 기본 prompt로 실행한 뒤 Set baseline 하세요. Candidate는 Load default prompts로 현재 prompt를 불러와 실제 문구를 수정한 뒤 실행합니다.</Text>
+                        <Space>
+                          <Button size="small" onClick={loadDefaultPrompts} disabled={!defaultPrompts}>Load default prompts</Button>
+                          <Button size="small" onClick={clearPromptEdits}>Clear edits / run default prompt</Button>
+                        </Space>
+                        <div>
+                          <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Prompt variant label</Text>
+                          <Input value={promptVariant} onChange={(e) => setPromptVariant(e.target.value)} placeholder="prompt variant label" />
+                        </div>
+                        <div>
+                          <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>System Prompt</Text>
+                          <Input.TextArea rows={4} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} placeholder="Override SYSTEM_PROMPT for candidate run (optional)" />
+                        </div>
+                        <div>
+                          <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Tool Policy</Text>
+                          <Input.TextArea rows={4} value={toolPolicy} onChange={(e) => setToolPolicy(e.target.value)} placeholder="Override TOOL_POLICY for candidate run (optional)" />
+                        </div>
+                        <div>
+                          <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>Output Contract</Text>
+                          <Input.TextArea rows={5} value={outputContract} onChange={(e) => setOutputContract(e.target.value)} placeholder="Override OUTPUT_CONTRACT for candidate run (optional)" />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Button type="primary" onClick={handleDone}>Done</Button>
+                        </div>
+                      </Space>
+                    ),
+                  },
+                  {
+                    key: 'history',
+                    label: <span><HistoryOutlined /> History {history.length > 0 && <Tag style={{ marginLeft: 4, fontSize: '0.68rem' }}>{history.length}</Tag>}</span>,
+                    children: (
+                      <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+                        <HistoryList
+                          history={history}
+                          onLoad={handleLoadHistory}
+                          onRemove={remove}
+                          onClear={clear}
+                        />
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </Modal>
             <Space style={{ marginTop: '8px' }}>
               <Button type="default" icon={<PlayCircleOutlined />} onClick={handleRun} loading={isLoading}>

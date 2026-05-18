@@ -278,3 +278,10 @@ Visit https://react.dev/link/error-boundaries to learn more about error boundari
 10:40:01 PM [vite] (client) [console.error] Warning: [antd: Space] `direction` is deprecated. Please use `orientation` instead.
 10:40:01 PM [vite] (client) [console.error] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead.
 10:40:04 PM [vite] (client) [console.error] Warning: [antd: Tag] `bordered={false}` is deprecated. Please use `variant="filled"` instead.
+10:47:51 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+10:48:33 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+10:48:57 PM [vite] (client) hmr update /src/components/ReferenceAgentPanel.tsx
+10:49:25 PM [vite] (client) [console.error] Warning: [antd: Card] `bordered` is deprecated. Please use `variant` instead.
+10:49:25 PM [vite] (client) [console.error] Warning: [antd: Space] `direction` is deprecated. Please use `orientation` instead.
+10:49:25 PM [vite] (client) [console.error] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead.
+10:49:41 PM [vite] (client) [console.error] Warning: [antd: Tag] `bordered={false}` is deprecated. Please use `variant="filled"` instead.
