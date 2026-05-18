@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import uuid
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -91,6 +92,48 @@ def metric_list() -> Dict[str, Any]:
     return {"metrics": [metric.to_dict() for metric in list_metrics()]}
 
 
+def available_models() -> Dict[str, Any]:
+    """로컬 LLM 서버와 llm_profiles 설정에서 사용 가능한 모델 목록을 반환합니다."""
+    import urllib.request
+    import urllib.error
+
+    profiles = llm_profiles_config()
+    providers_cfg = profiles.get("providers", {})
+
+    # llm_profiles.json 에 정의된 모델 수집
+    profile_models: List[Dict[str, Any]] = []
+    for provider, cfg in providers_cfg.items():
+        for m in cfg.get("models", []):
+            profile_models.append({"id": m, "provider": provider, "source": "config"})
+
+    # Ollama 실행 중이면 실제 설치된 모델 조회
+    ollama_models: List[Dict[str, Any]] = []
+    ollama_base = (providers_cfg.get("ollama") or {}).get("base_url", "http://localhost:11434/v1")
+    ollama_api = ollama_base.replace("/v1", "").rstrip("/") + "/api/tags"
+    try:
+        with urllib.request.urlopen(ollama_api, timeout=2) as resp:
+            data = json.loads(resp.read().decode())
+            for m in data.get("models", []):
+                name = m.get("name") or m.get("model", "")
+                details = m.get("details", {})
+                ollama_models.append({
+                    "id": name,
+                    "provider": "ollama",
+                    "source": "running",
+                    "size": details.get("parameter_size"),
+                    "quantization": details.get("quantization_level"),
+                })
+    except Exception:
+        pass
+
+    # 실행 중인 모델 우선, 중복 제거
+    running_ids = {m["id"] for m in ollama_models}
+    merged = ollama_models + [m for m in profile_models if m["id"] not in running_ids]
+    default_model = profiles.get("default_model", "gpt-4o-mini")
+
+    return {"models": merged, "defaultModel": default_model}
+
+
 def reference_prompt_defaults() -> Dict[str, Any]:
     return {
         "prompts": {
@@ -139,7 +182,7 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
         access_log_path = Path(request.accessLogPath) if request.accessLogPath else all_fixtures["normal-login-error-spike"].access_log_path
         fault = None
 
-    run_id = make_id("ref", label)
+    run_id = make_id("ref", label) + "_" + uuid.uuid4().hex[:6]
     trace_path = store.reference_trace_path(run_id)
     report_path = store.reference_report_path(run_id)
     trace_path.parent.mkdir(parents=True, exist_ok=True)

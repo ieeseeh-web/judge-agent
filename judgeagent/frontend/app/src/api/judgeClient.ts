@@ -1,4 +1,4 @@
-import type { AnalysisSummary, ChatMessage, ConfigSnapshot, Finding, PromptOverrides, PromptRegression, ReferencePromptDefaults, ReferenceRun } from '../types/judge';
+import type { AnalysisSummary, ChatMessage, ConfigSnapshot, PromptOverrides, PromptRegression, ReferencePromptDefaults, ReferenceRun } from '../types/judge';
 
 const BASE_URL = import.meta.env.VITE_JUDGE_API_BASE_URL || 'http://localhost:19001';
 
@@ -38,6 +38,10 @@ export async function getReferencePrompts(): Promise<ReferencePromptDefaults> {
 export async function getFixtures(): Promise<any[]> {
   const data = await apiFetch<any>('/api/reference/fixtures');
   return data.fixtures || [];
+}
+
+export async function getModels(): Promise<{ models: any[]; defaultModel: string }> {
+  return apiFetch<any>('/api/models');
 }
 
 function mapRun(run: any): ReferenceRun {

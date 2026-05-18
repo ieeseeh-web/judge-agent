@@ -33,6 +33,7 @@ from .api_services import (
     list_reference_fixtures,
     list_reference_runs,
     metric_list,
+    available_models,
     reference_prompt_defaults,
     create_prompt_regression,
     run_reference_agent,
@@ -85,6 +86,10 @@ def create_app():
     @app.get("/api/metrics")
     def api_metrics():
         return metric_list()
+
+    @app.get("/api/models")
+    def api_models():
+        return available_models()
 
     @app.get("/api/reference/fixtures")
     def api_reference_fixtures():

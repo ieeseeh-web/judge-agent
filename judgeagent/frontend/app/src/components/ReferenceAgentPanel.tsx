@@ -183,7 +183,8 @@ export function ReferenceAgentPanel({
   const [input, setInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [selectedMode, setSelectedMode] = useState('hybrid');
-  const [selectedModelId, setSelectedModelId] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState<string | undefined>(undefined);
+  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([]);
   const [fixtures, setFixtures] = useState<FixtureOption[]>([]);
 
   const [promptModalOpen, setPromptModalOpen] = useState(false);
@@ -197,9 +198,38 @@ export function ReferenceAgentPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.getFixtures().then((list: any[]) =>
-      setFixtures(list.map(f => ({ value: f.id, label: f.id, userInput: f.userInput })))
-    ).catch(() => {});
+    let attempts = 0;
+    const load = () => {
+      api.getFixtures()
+        .then((list: any[]) =>
+          setFixtures(list.map(f => ({
+            value: f.id,
+            label: `[${f.id}] ${f.userInput}`,
+            userInput: f.userInput,
+          })))
+        )
+        .catch(() => { if (attempts++ < 5) setTimeout(load, 2000); });
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    api.getModels()
+      .then(({ models, defaultModel }) => {
+        const opts = models.map((m: any) => ({
+          value: m.id,
+          label: m.source === 'running'
+            ? `${m.id}${m.size ? ` (${m.size})` : ''}`
+            : m.id,
+        }));
+        setModelOptions([
+          { value: '', label: `기본값 (${defaultModel})` },
+          ...opts,
+        ]);
+      })
+      .catch(() => {
+        setModelOptions([{ value: '', label: '기본값' }]);
+      });
   }, []);
 
   useEffect(() => {
@@ -225,7 +255,7 @@ export function ReferenceAgentPanel({
     setIsRunning(true);
 
     try {
-      const run = await api.runReferenceAgentCustom(msg, selectedMode === 'hybrid', changedPromptOverrides(), selectedModelId.trim() || undefined);
+      const run = await api.runReferenceAgentCustom(msg, selectedMode === 'hybrid', changedPromptOverrides(), selectedModelId || undefined);
       setChatTurns(prev => prev.map(t =>
         t.id === turnId ? { ...t, run, status: run.status === 'succeeded' ? 'succeeded' : 'failed' } : t
       ));
@@ -304,14 +334,14 @@ export function ReferenceAgentPanel({
             ]}
           />
 
-          <Tooltip title="사용할 LLM 모델 ID를 지정합니다. 비워두면 서버 기본값을 사용합니다.">
-            <Input
+          <Tooltip title="실행할 LLM 모델을 선택합니다. '기본값'은 서버 설정 모델을 사용합니다.">
+            <Select
               size="small"
-              value={selectedModelId}
-              onChange={e => setSelectedModelId(e.target.value)}
-              placeholder="Model (기본값)"
-              style={{ width: 160 }}
-              allowClear
+              style={{ width: 200 }}
+              value={selectedModelId ?? ''}
+              onChange={v => setSelectedModelId(v || undefined)}
+              options={modelOptions}
+              loading={modelOptions.length === 0}
             />
           </Tooltip>
 
