@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Judge Agent Backend 단독 실행 개발 가이드</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#ffffff; --fg:#172033; --muted:#64748b; --card:#f8fafc; --line:#e2e8f0; --accent:#2563eb; --code:#0f172a; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#172033; --line:#334155; --accent:#60a5fa; --code:#f8fafc; } }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; line-height:1.68; }
+    main { max-width:920px; margin:0 auto; padding:40px 20px 80px; }
+    h1 { font-size:2rem; margin:.2rem 0 .4rem; }
+    h2 { margin-top:2.1rem; padding-top:.8rem; border-top:1px solid var(--line); }
+    h3 { margin-top:1.4rem; }
+    .lead { color:var(--muted); font-size:1.05rem; }
+    code { color:var(--code); background:var(--card); padding:.12rem .36rem; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
+    pre { overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+    pre code { background:transparent; padding:0; }
+    .note { background:var(--card); border-left:4px solid var(--accent); padding:12px 16px; border-radius:8px; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th, td { border:1px solid var(--line); padding:.6rem .75rem; text-align:left; }
+    th { background:var(--card); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Judge Agent Backend 단독 실행 개발 가이드</h1>
+  <p class="lead"><code>judge-agent</code> 프로젝트에서 frontend 없이 backend API만 별도로 실행하는 방법입니다.</p>
+
+  <h2>파일 위치</h2>
+  <ul>
+    <li>실행 스크립트: <code>scripts/run-backend.sh</code></li>
+    <li>Markdown 문서: <code>docs/backend-only-development-guide.md</code></li>
+    <li>HTML 문서: <code>docs/backend-only-development-guide.html</code></li>
+  </ul>
+
+  <h2>Backend 구성</h2>
+  <table>
+    <tbody>
+      <tr><th>앱 모듈</th><td><code>judgeagent.backend.api:app</code></td></tr>
+      <tr><th>기본 포트</th><td><code>19001</code></td></tr>
+      <tr><th>기본 host</th><td><code>0.0.0.0</code></td></tr>
+      <tr><th>로그 경로</th><td><code>.logs/backend.log</code></td></tr>
+      <tr><th>PID 파일</th><td><code>.logs/backend.pid</code></td></tr>
+    </tbody>
+  </table>
+  <div class="note">루트의 기존 <code>start.sh</code>는 backend와 frontend를 함께 실행합니다. backend만 실행하려면 <code>./scripts/run-backend.sh</code>를 사용하세요.</div>
+
+  <h2>기본 실행</h2>
+  <pre><code>./scripts/run-backend.sh</code></pre>
+  <pre><code>Backend:  http://localhost:19001
+API Docs: http://localhost:19001/docs</code></pre>
+
+  <h2>포트 변경</h2>
+  <pre><code>BACKEND_PORT=19002 ./scripts/run-backend.sh</code></pre>
+
+  <h2>Host 변경</h2>
+  <pre><code>BACKEND_HOST=127.0.0.1 ./scripts/run-backend.sh</code></pre>
+  <p>다른 장치에서도 접근해야 하면 기본값 <code>0.0.0.0</code>을 사용합니다.</p>
+
+  <h2>Python 실행 파일 지정</h2>
+  <pre><code>PYTHON=.venv/bin/python ./scripts/run-backend.sh</code></pre>
+  <pre><code>source .venv/bin/activate
+./scripts/run-backend.sh</code></pre>
+
+  <h2>의존성 설치</h2>
+  <pre><code>python3 -m pip install -e '.[api]'</code></pre>
+  <p>agent 관련 의존성까지 필요하면:</p>
+  <pre><code>python3 -m pip install -e '.[api,agent]'</code></pre>
+
+  <h2>로그 확인</h2>
+  <pre><code>tail -f .logs/backend.log</code></pre>
+
+  <h2>중지 방법</h2>
+  <pre><code>kill $(cat .logs/backend.pid)</code></pre>
+  <p>프로젝트의 기존 <code>./stop.sh</code>도 사용할 수 있습니다.</p>
+  <pre><code>./stop.sh</code></pre>
+
+  <h2>reload 끄기</h2>
+  <pre><code>RELOAD=0 ./scripts/run-backend.sh</code></pre>
+
+  <h2>앱 모듈 변경</h2>
+  <pre><code>APP_MODULE=some.module:app ./scripts/run-backend.sh</code></pre>
+
+  <h2>정상 동작 확인</h2>
+  <ol>
+    <li>backend 실행: <code>./scripts/run-backend.sh</code></li>
+    <li>docs 페이지 확인: <code>open http://localhost:19001/docs</code></li>
+    <li>로그 확인: <code>tail -f .logs/backend.log</code></li>
+  </ol>
+
+  <h2>문제 해결</h2>
+  <h3>이미 실행 중이라고 나오는 경우</h3>
+  <pre><code>cat .logs/backend.pid
+kill $(cat .logs/backend.pid)</code></pre>
+
+  <h3><code>uvicorn</code>이 없다고 나오는 경우</h3>
+  <pre><code>python3 -m pip install -e '.[api]'
+which python3
+python3 -m pip show uvicorn</code></pre>
+
+  <h3>포트 충돌이 나는 경우</h3>
+  <pre><code>BACKEND_PORT=19002 ./scripts/run-backend.sh</code></pre>
+
+  <h3>frontend가 같이 실행되는 경우</h3>
+  <pre><code>./scripts/run-backend.sh</code></pre>
+
+  <h2>개발 체크리스트</h2>
+  <ul>
+    <li>의존성 설치 완료</li>
+    <li>backend만 실행</li>
+    <li><code>http://localhost:19001/docs</code> 접근 확인</li>
+    <li><code>.logs/backend.log</code> 에러 확인</li>
+    <li>작업 후 backend 종료</li>
+  </ul>
+</main>
+</body>
+</html>
