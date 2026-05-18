@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from typing import Any, Dict, List, Optional
@@ -7,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from . import tools
 from .llm import LLMClient, parse_json_object
 from .mcp import StdioMCPClient
-from .prompts import OUTPUT_CONTRACT, PROMPT_TEMPLATE_NAME, PROMPT_TEMPLATE_VERSION, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY, prompt_contract_hash, prompt_sections, prompt_template_hash
+from .prompts import OUTPUT_CONTRACT, PROMPT_TEMPLATE_NAME, PROMPT_TEMPLATE_VERSION, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY
 from .rag import LocalRunbookRetriever
 from .reporting import build_report
 from .state import WebLogAnalysisState
@@ -51,6 +52,7 @@ class WebLogAnalysisAgent:
         retriever: Optional[LocalRunbookRetriever] = None,
         mcp_client: Optional[StdioMCPClient] = None,
         max_steps: int = 10,
+        prompt_overrides: Optional[Dict[str, str]] = None,
     ):
         self.trace = trace_logger
         self.fault = fault
@@ -59,6 +61,28 @@ class WebLogAnalysisAgent:
         self.retriever = retriever or LocalRunbookRetriever()
         self.mcp = mcp_client or StdioMCPClient()
         self.max_steps = max_steps
+        prompt_overrides = prompt_overrides or {}
+        self.system_prompt = prompt_overrides.get("system") or SYSTEM_PROMPT
+        self.react_protocol = prompt_overrides.get("react_protocol") or REACT_PROTOCOL
+        self.tool_policy = prompt_overrides.get("tool_policy") or TOOL_POLICY
+        self.output_contract = prompt_overrides.get("output_contract") or OUTPUT_CONTRACT
+        self.prompt_variant = prompt_overrides.get("variant") or ("custom" if prompt_overrides else "default")
+
+    def _prompt_sections(self) -> Dict[str, str]:
+        return {
+            "system": self.system_prompt,
+            "react_protocol": self.react_protocol,
+            "tool_policy": self.tool_policy,
+            "output_contract": self.output_contract,
+        }
+
+    def _hash_text(self, value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    def _prompt_template_hash(self) -> str:
+        sections = self._prompt_sections()
+        body = "\n--- prompt-section ---\n".join(sections[key] for key in sorted(sections))
+        return self._hash_text(body)
 
     def run(self, user_input: str, access_log_path: str, baseline_path: Optional[str] = None, log_format: str = "nginx_combined") -> WebLogAnalysisState:
         state = WebLogAnalysisState()
@@ -81,13 +105,14 @@ class WebLogAnalysisAgent:
             "instruction_snapshot",
             prompt_template_name=PROMPT_TEMPLATE_NAME,
             prompt_template_version=PROMPT_TEMPLATE_VERSION,
-            prompt_template_hash=prompt_template_hash(),
-            prompt_contract_hash=prompt_contract_hash(),
-            prompt_sections={key: {"present": bool(value), "sha256": __import__("hashlib").sha256(value.encode("utf-8")).hexdigest()} for key, value in prompt_sections().items()},
-            system=SYSTEM_PROMPT,
-            react_protocol=REACT_PROTOCOL,
-            tool_policy=TOOL_POLICY,
-            output_contract=OUTPUT_CONTRACT,
+            prompt_template_hash=self._prompt_template_hash(),
+            prompt_contract_hash=self._hash_text(self.output_contract),
+            prompt_sections={key: {"present": bool(value), "sha256": self._hash_text(value)} for key, value in self._prompt_sections().items()},
+            prompt_variant=self.prompt_variant,
+            system=self.system_prompt,
+            react_protocol=self.react_protocol,
+            tool_policy=self.tool_policy,
+            output_contract=self.output_contract,
         )
         try:
             self._node("initialize_agent", state, self.initialize_agent)
@@ -123,7 +148,7 @@ class WebLogAnalysisAgent:
         final = state.finalReport or ""
         required_sections = [
             line.removeprefix("## ").strip()
-            for line in OUTPUT_CONTRACT.splitlines()
+            for line in self.output_contract.splitlines()
             if line.startswith("## ")
         ]
         missing_sections = [section for section in required_sections if f"## {section}" not in final]
@@ -149,8 +174,8 @@ class WebLogAnalysisAgent:
             prompt_template={
                 "name": PROMPT_TEMPLATE_NAME,
                 "version": PROMPT_TEMPLATE_VERSION,
-                "hash": prompt_template_hash(),
-                "contract_hash": prompt_contract_hash(),
+                "hash": self._prompt_template_hash(),
+                "contract_hash": self._hash_text(self.output_contract),
                 "present": bool(PROMPT_TEMPLATE_NAME and PROMPT_TEMPLATE_VERSION),
             },
             output_format={

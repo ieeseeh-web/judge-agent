@@ -1,30 +1,4 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Prompt Regression 실행 가이드</title>
-  <style>
-    :root { color-scheme: light dark; --bg:#fff; --fg:#172033; --muted:#64748b; --card:#f8fafc; --line:#e2e8f0; --accent:#2563eb; --code:#0f172a; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#172033; --line:#334155; --accent:#60a5fa; --code:#f8fafc; } }
-    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; line-height:1.65; }
-    main { max-width:1040px; margin:0 auto; padding:40px 20px 88px; }
-    h1 { font-size:2rem; margin:.2rem 0 1rem; }
-    h2 { margin-top:2.2rem; padding-top:.9rem; border-top:1px solid var(--line); }
-    h3 { margin-top:1.5rem; }
-    blockquote { margin:1rem 0; padding:12px 16px; border-left:4px solid var(--accent); background:var(--card); border-radius:8px; color:var(--muted); }
-    code { color:var(--code); background:var(--card); padding:.12rem .36rem; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
-    pre { overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-    pre code { background:transparent; padding:0; }
-    table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:.93rem; }
-    th, td { border:1px solid var(--line); padding:.58rem .7rem; text-align:left; vertical-align:top; }
-    th { background:var(--card); }
-    ul, ol { padding-left:1.35rem; }
-  </style>
-</head>
-<body>
-<main>
-<h1>Prompt Regression 실행 가이드</h1>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Prompt Regression 실행 가이드</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;line-height:1.65;max-width:1040px;margin:40px auto;padding:0 20px;color:#172033}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #ddd;padding:7px;vertical-align:top}th{background:#f8fafc}pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;overflow:auto}code{background:#f1f5f9;padding:1px 4px;border-radius:4px}h2{border-top:1px solid #e2e8f0;padding-top:18px;margin-top:32px}</style></head><body><h1>Prompt Regression 실행 가이드</h1>
 <p>이 문서는 Judge Agent frontend에 추가된 Prompt Regression 기능을 사용해 <strong>기준 prompt 실행 결과</strong>와 <strong>변경 prompt 실행 결과</strong>를 비교하는 방법을 설명합니다.</p>
 <h2>1. 기능 개요</h2>
 <p>Prompt Regression은 같은 fixture/input을 기준으로 baseline run과 candidate run을 비교해 prompt 변경으로 품질이 악화되었는지 판단합니다.</p>
@@ -75,14 +49,24 @@ npm run dev</code></pre>
 <p>이 run이 Prompt Regression의 기준 실행 결과가 됩니다.</p>
 <h3>3.2 Candidate run 생성</h3>
 <ol>
-<li>같은 패널에서 변경 후 비교할 fixture 또는 prompt drift fixture를 선택합니다.</li>
+<li>같은 fixture/input 조건을 유지합니다. 일반적인 prompt regression에서는 baseline과 같은 fixture를 선택합니다.</li>
 </ol>
-<p>   - 예: <code>drift-prompt-output-contract</code></p>
-<p>   - 예: <code>drift-validation-skipped</code></p>
+<p>   - 예: baseline도 <code>normal-login-error-spike</code>, candidate도 <code>normal-login-error-spike</code></p>
+<ol>
+<li><code>Prompt edit for candidate run</code> 영역을 펼칩니다.</li>
+<li><code>Load default prompts</code>를 눌러 현재 기본 prompt를 불러옵니다.</li>
+<li><code>SYSTEM_PROMPT</code>, <code>TOOL_POLICY</code>, <code>OUTPUT_CONTRACT</code> 중 변경하고 싶은 영역을 실제로 수정합니다.</li>
+</ol>
+<p>   - 기본 prompt와 동일한 영역은 override로 전송되지 않습니다.</p>
+<p>   - <code>Clear edits / run default prompt</code>를 누르면 기본 prompt 실행 상태로 돌아갑니다.</p>
 <ol>
 <li><code>Run Reference Agent</code> 버튼을 다시 클릭합니다.</li>
 <li>실행이 완료되어 status가 <code>SUCCEEDED</code>가 되면 <code>Compare prompt regression</code> 버튼을 클릭합니다.</li>
 </ol>
+<p>즉, frontend의 의도된 흐름은 다음과 같습니다.</p>
+<pre><code>기본 prompt로 baseline 실행 → Set baseline
+prompt editor에서 실제 prompt 수정 → candidate 실행
+baseline vs candidate 비교</code></pre>
 <h3>3.3 결과 확인</h3>
 <p>오른쪽 <code>Judge Agent Metrics</code> 패널에 Prompt Regression 카드가 표시됩니다.</p>
 <p>표시 항목:</p>
@@ -101,8 +85,9 @@ npm run dev</code></pre>
 Mode: Deterministic
 Action: Run Reference Agent → Set baseline</code></pre>
 <p>Candidate:</p>
-<pre><code>Fixture: drift-prompt-output-contract
+<pre><code>Fixture: normal-login-error-spike
 Mode: Deterministic
+Prompt edit: OUTPUT_CONTRACT에서 일부 필수 section 제거 또는 변경
 Action: Run Reference Agent → Compare prompt regression</code></pre>
 <p>예상 결과:</p>
 <pre><code>Regression Score: 낮음
@@ -260,7 +245,4 @@ python3 -m judgeagent.reference.agent.weblog_agent.cli run-fixture \
 <li>현재 frontend 비교는 “현재 선택된 baseline run”과 “현재 실행 완료된 candidate run”을 비교합니다.</li>
 <li>baseline과 candidate가 같은 run이면 비교하지 않습니다.</li>
 <li>API 결과 artifact는 runtime output이므로 일반적으로 git commit 대상이 아닙니다.</li>
-</ul>
-</main>
-</body>
-</html>
+</ul></body></html>

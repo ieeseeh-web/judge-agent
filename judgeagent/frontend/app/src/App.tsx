@@ -3,7 +3,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { ReferenceAgentPanel } from './components/ReferenceAgentPanel';
 import { MetricsPanel } from './components/MetricsPanel';
 import * as api from './api/judgeClient';
-import type { ChatMessage, ConfigSnapshot, ReferenceRun, AnalysisSummary, Finding, PromptRegression } from './types/judge';
+import type { ChatMessage, ConfigSnapshot, ReferenceRun, AnalysisSummary, Finding, PromptOverrides, PromptRegression, ReferencePromptDefaults } from './types/judge';
 import { ConfigProvider, Layout, Row, Col, Typography, message, Card } from 'antd';
 
 const { Header, Content } = Layout;
@@ -14,6 +14,7 @@ function App() {
   const [referenceRun, setReferenceRun] = useState<ReferenceRun | null>(null);
   const [baselineRun, setBaselineRun] = useState<ReferenceRun | null>(null);
   const [promptRegression, setPromptRegression] = useState<PromptRegression | null>(null);
+  const [referencePrompts, setReferencePrompts] = useState<ReferencePromptDefaults | null>(null);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -24,8 +25,9 @@ function App() {
   useEffect(() => {
     async function init() {
       try {
-        const cfg = await api.getConfig();
+        const [cfg, prompts] = await Promise.all([api.getConfig(), api.getReferencePrompts()]);
         setConfig(cfg);
+        setReferencePrompts(prompts);
         setMessages([{
           id: `sys-welcome`,
           role: 'system',
@@ -39,10 +41,10 @@ function App() {
     init();
   }, []);
 
-  const handleRun = async (fixtureId: string, useLlm: boolean) => {
+  const handleRun = async (fixtureId: string, useLlm: boolean, promptOverrides?: PromptOverrides) => {
     setIsLoading(true);
     try {
-      const run = await api.runReferenceAgent(fixtureId, useLlm);
+      const run = await api.runReferenceAgent(fixtureId, useLlm, promptOverrides);
       setReferenceRun(run);
       // Reset judge state
       setSummary(null);
@@ -178,6 +180,7 @@ function App() {
                   onSetBaseline={handleSetBaseline}
                   onComparePromptRegression={handlePromptRegression}
                   baselineRun={baselineRun}
+                  defaultPrompts={referencePrompts}
                   isLoading={isLoading}
                 />
               </div>

@@ -33,6 +33,7 @@ from .api_services import (
     list_reference_fixtures,
     list_reference_runs,
     metric_list,
+    reference_prompt_defaults,
     create_prompt_regression,
     run_reference_agent,
     send_judge_message,
@@ -88,6 +89,10 @@ def create_app():
     @app.get("/api/reference/fixtures")
     def api_reference_fixtures():
         return list_reference_fixtures()
+
+    @app.get("/api/reference/prompts")
+    def api_reference_prompts():
+        return reference_prompt_defaults()
 
     @app.post("/api/reference/runs")
     async def api_reference_runs(request: Request):

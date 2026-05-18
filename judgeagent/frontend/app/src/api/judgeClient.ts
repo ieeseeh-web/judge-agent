@@ -1,4 +1,4 @@
-import type { AnalysisSummary, ChatMessage, ConfigSnapshot, Finding, PromptRegression, ReferenceRun } from '../types/judge';
+import type { AnalysisSummary, ChatMessage, ConfigSnapshot, Finding, PromptOverrides, PromptRegression, ReferencePromptDefaults, ReferenceRun } from '../types/judge';
 
 const BASE_URL = import.meta.env.VITE_JUDGE_API_BASE_URL || 'http://localhost:19001';
 
@@ -29,18 +29,25 @@ export async function getConfig(): Promise<ConfigSnapshot> {
   };
 }
 
+
+export async function getReferencePrompts(): Promise<ReferencePromptDefaults> {
+  const data = await apiFetch<any>('/api/reference/prompts');
+  return data.prompts;
+}
+
 export async function getFixtures(): Promise<any[]> {
   const data = await apiFetch<any>('/api/reference/fixtures');
   return data.fixtures || [];
 }
 
-export async function runReferenceAgent(fixtureId: string, useLlm: boolean = false): Promise<ReferenceRun> {
+export async function runReferenceAgent(fixtureId: string, useLlm: boolean = false, promptOverrides?: PromptOverrides): Promise<ReferenceRun> {
   const data = await apiFetch<any>('/api/reference/runs', {
     method: 'POST',
     body: JSON.stringify({
       mode: 'fixture',
       fixtureId,
       useLlm,
+      promptOverrides,
     }),
   });
   const run = data.run;
@@ -52,6 +59,8 @@ export async function runReferenceAgent(fixtureId: string, useLlm: boolean = fal
     userInput: run.userInput,
     tracePath: run.tracePath,
     reportPath: run.reportPath,
+    promptVariant: run.promptVariant,
+    promptOverrides: run.promptOverrides,
     eventCounts: run.eventCounts,
     timeline: (run.timelinePreview || []).map((ev: any, idx: number) => ({
       id: `ev-${idx}`,

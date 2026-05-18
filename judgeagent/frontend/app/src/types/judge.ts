@@ -13,6 +13,21 @@ export type ReferenceEvent = {
   payload?: Record<string, unknown>;
 };
 
+export type PromptOverrides = {
+  variant?: string;
+  system?: string;
+  react_protocol?: string;
+  tool_policy?: string;
+  output_contract?: string;
+};
+
+export type ReferencePromptDefaults = {
+  system: string;
+  react_protocol: string;
+  tool_policy: string;
+  output_contract: string;
+};
+
 export type ReferenceRun = {
   id: string;
   fixture?: string;
@@ -21,6 +36,8 @@ export type ReferenceRun = {
   userInput?: string;
   tracePath?: string;
   reportPath?: string;
+  promptVariant?: string;
+  promptOverrides?: string[];
   eventCounts: Record<string, number>;
   timeline: ReferenceEvent[];
 };

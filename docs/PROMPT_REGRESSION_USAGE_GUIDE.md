@@ -86,11 +86,23 @@ VITE_JUDGE_API_BASE_URL=http://localhost:19001 npm run dev
 
 ### 3.2 Candidate run 생성
 
-1. 같은 패널에서 변경 후 비교할 fixture 또는 prompt drift fixture를 선택합니다.
-   - 예: `drift-prompt-output-contract`
-   - 예: `drift-validation-skipped`
-2. `Run Reference Agent` 버튼을 다시 클릭합니다.
-3. 실행이 완료되어 status가 `SUCCEEDED`가 되면 `Compare prompt regression` 버튼을 클릭합니다.
+1. 같은 fixture/input 조건을 유지합니다. 일반적인 prompt regression에서는 baseline과 같은 fixture를 선택합니다.
+   - 예: baseline도 `normal-login-error-spike`, candidate도 `normal-login-error-spike`
+2. `Prompt edit for candidate run` 영역을 펼칩니다.
+3. `Load default prompts`를 눌러 현재 기본 prompt를 불러옵니다.
+4. `SYSTEM_PROMPT`, `TOOL_POLICY`, `OUTPUT_CONTRACT` 중 변경하고 싶은 영역을 실제로 수정합니다.
+   - 기본 prompt와 동일한 영역은 override로 전송되지 않습니다.
+   - `Clear edits / run default prompt`를 누르면 기본 prompt 실행 상태로 돌아갑니다.
+5. `Run Reference Agent` 버튼을 다시 클릭합니다.
+6. 실행이 완료되어 status가 `SUCCEEDED`가 되면 `Compare prompt regression` 버튼을 클릭합니다.
+
+즉, frontend의 의도된 흐름은 다음과 같습니다.
+
+```text
+기본 prompt로 baseline 실행 → Set baseline
+prompt editor에서 실제 prompt 수정 → candidate 실행
+baseline vs candidate 비교
+```
 
 ### 3.3 결과 확인
 
@@ -123,8 +135,9 @@ Action: Run Reference Agent → Set baseline
 Candidate:
 
 ```text
-Fixture: drift-prompt-output-contract
+Fixture: normal-login-error-spike
 Mode: Deterministic
+Prompt edit: OUTPUT_CONTRACT에서 일부 필수 section 제거 또는 변경
 Action: Run Reference Agent → Compare prompt regression
 ```
 

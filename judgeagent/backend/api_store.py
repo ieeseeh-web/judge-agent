@@ -15,9 +15,11 @@ def now_ts() -> float:
 
 
 def make_id(prefix: str, label: Optional[str] = None) -> str:
-    stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    current = time.time()
+    stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime(current))
+    millis = int((current % 1) * 1000)
     suffix = f"_{safe_session_id(label)}" if label else ""
-    return f"{prefix}_{stamp}{suffix}"
+    return f"{prefix}_{stamp}_{millis:03d}{suffix}"
 
 
 class ApiStore:

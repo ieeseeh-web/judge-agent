@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional
 from judgeagent.reference.agent.weblog_agent.fixtures import fixtures
 from judgeagent.reference.agent.weblog_agent.graph import WebLogAnalysisAgent
 from judgeagent.reference.agent.weblog_agent.trace import TraceLogger
+from judgeagent.reference.agent.weblog_agent.prompts import OUTPUT_CONTRACT, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY
 
 from judgeagent.judge_agent.analysis.analyzer import analyze_traces
 from judgeagent.judge_agent.analysis.reporter import markdown_report
@@ -90,6 +91,16 @@ def metric_list() -> Dict[str, Any]:
     return {"metrics": [metric.to_dict() for metric in list_metrics()]}
 
 
+def reference_prompt_defaults() -> Dict[str, Any]:
+    return {
+        "prompts": {
+            "system": SYSTEM_PROMPT,
+            "react_protocol": REACT_PROTOCOL,
+            "tool_policy": TOOL_POLICY,
+            "output_contract": OUTPUT_CONTRACT,
+        }
+    }
+
 def list_reference_fixtures() -> Dict[str, Any]:
     return {
         "fixtures": [
@@ -136,7 +147,7 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
 
     logger = TraceLogger(trace_path, run_id=run_id)
     try:
-        agent = WebLogAnalysisAgent(logger, fault=fault, use_llm=request.useLlm)
+        agent = WebLogAnalysisAgent(logger, fault=fault, use_llm=request.useLlm, prompt_overrides=request.promptOverrides)
         state = agent.run(user_input, str(access_log_path))
     except Exception as exc:
         logger.close()
@@ -157,6 +168,8 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
         "userInput": user_input,
         "accessLogPath": str(access_log_path),
         "useLlm": request.useLlm,
+        "promptVariant": request.promptOverrides.get("variant") if request.promptOverrides else "default",
+        "promptOverrides": sorted(request.promptOverrides.keys()) if request.promptOverrides else [],
         "tracePath": str(trace_path),
         "reportPath": str(report_path),
         "eventCounts": _event_counts(trace_path),

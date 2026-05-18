@@ -22,6 +22,7 @@ class ReferenceRunRequest:
     userInput: Optional[str] = None
     accessLogPath: Optional[str] = None
     useLlm: bool = True
+    promptOverrides: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -71,6 +72,7 @@ def reference_run_request(data: Dict[str, Any]) -> ReferenceRunRequest:
         userInput=data.get("userInput") or data.get("user_input"),
         accessLogPath=data.get("accessLogPath") or data.get("access_log_path"),
         useLlm=bool(data.get("useLlm", data.get("use_llm", True))),
+        promptOverrides={str(k): str(v) for k, v in (data.get("promptOverrides") or data.get("prompt_overrides") or {}).items() if v is not None},
     )
 
 
