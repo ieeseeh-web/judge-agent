@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prompt 변경 Regression 평가 지표 구현 계획</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#fff; --fg:#172033; --muted:#64748b; --card:#f8fafc; --line:#e2e8f0; --accent:#2563eb; --code:#0f172a; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#172033; --line:#334155; --accent:#60a5fa; --code:#f8fafc; } }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; line-height:1.65; }
+    main { max-width:1050px; margin:0 auto; padding:40px 20px 88px; }
+    h1 { font-size:2rem; margin:.2rem 0 1rem; }
+    h2 { margin-top:2.2rem; padding-top:.9rem; border-top:1px solid var(--line); }
+    h3 { margin-top:1.5rem; }
+    blockquote { margin:1rem 0; padding:12px 16px; border-left:4px solid var(--accent); background:var(--card); border-radius:8px; color:var(--muted); }
+    code { color:var(--code); background:var(--card); padding:.12rem .36rem; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
+    pre { overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+    pre code { background:transparent; padding:0; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:.93rem; }
+    th, td { border:1px solid var(--line); padding:.58rem .7rem; text-align:left; vertical-align:top; }
+    th { background:var(--card); }
+    ul, ol { padding-left:1.35rem; }
+    .checklist { list-style:none; padding-left:.2rem; }
+  </style>
+</head>
+<body>
+<main>
+<h1>Prompt 변경 Regression 평가 지표 구현 계획</h1>
+<h2>1. 목적</h2>
+<p>현재 <code>prompt_template_version_present</code>는 trace에 prompt name/version이 남는지 확인하는 <strong>추적 가능성 지표</strong>입니다.</p>
+<p>다음 단계는 prompt 변경 전후 같은 fixture/input을 실행했을 때, agent behavior가 나빠졌는지 Judge Agent가 판단할 수 있게 하는 것입니다.</p>
+<p>즉, 목표는 다음과 같습니다.</p>
+<pre><code>Prompt A 기준 실행 결과
+Prompt B 변경 실행 결과
+        ↓
+동일 fixture/input 기준 before/after 비교
+        ↓
+score/gate/finding/tool/output 변화로 regression 판정</code></pre>
+<h2>2. 구현 대상 지표</h2>
+<h3>2.1 <code>prompt_version_regression_score</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>목적</td><td>prompt 변경 후 전체 품질이 얼마나 악화되었는지 0~100 score로 계산</td></tr>
+<tr><td>입력</td><td>baseline run, candidate run</td></tr>
+<tr><td>산출</td><td>regression score, score delta, finding delta summary</td></tr>
+<tr><td>실패 기준</td><td>score 하락, gate 악화, high/critical finding 증가</td></tr>
+<tr><td>권장 severity</td><td>High</td></tr>
+</tbody></table>
+<p>계산 예시:</p>
+<pre><code>regression_penalty =
+  score_drop
+  + gate_regression_penalty
+  + new_high_critical_penalty
+  + output_contract_penalty
+  + validation_path_penalty
+
+prompt_version_regression_score = max(0, 100 - regression_penalty)</code></pre>
+<h3>2.2 <code>gate_regression</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>목적</td><td>prompt 변경 후 gate가 악화되었는지 확인</td></tr>
+<tr><td>입력</td><td>baseline gate, candidate gate</td></tr>
+<tr><td>악화 순서</td><td>pass &lt; warning &lt; block</td></tr>
+<tr><td>실패 조건</td><td><code>pass → warning/block</code>, <code>warning → block</code></td></tr>
+<tr><td>권장 severity</td><td>Critical 또는 High</td></tr>
+</tbody></table>
+<h3>2.3 <code>new_high_severity_findings</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>목적</td><td>prompt 변경 후 새 high/critical finding이 생겼는지 확인</td></tr>
+<tr><td>입력</td><td>baseline findings, candidate findings</td></tr>
+<tr><td>비교 key</td><td><code>metric + category + normalized evidence/location</code></td></tr>
+<tr><td>실패 조건</td><td>candidate에만 존재하는 high/critical finding</td></tr>
+<tr><td>권장 severity</td><td>High</td></tr>
+</tbody></table>
+<h3>2.4 <code>tool_and_output_stability_score</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>목적</td><td>prompt 변경 후 tool sequence와 output structure가 안정적으로 유지되는지 평가</td></tr>
+<tr><td>입력</td><td>baseline trace events, candidate trace events</td></tr>
+<tr><td>비교 대상</td><td>tool call sequence, required sections, validation path, target grounding</td></tr>
+<tr><td>실패 조건</td><td>필수 tool 누락, 순서 급변, output contract 실패, target path 불일치</td></tr>
+<tr><td>권장 severity</td><td>Medium 또는 High</td></tr>
+</tbody></table>
+<h2>3. 필요한 trace 수집값</h2>
+<p>Reference Agent는 이미 일부 prompt metadata를 수집합니다.</p>
+<p>현재 수집:</p>
+<ul>
+<li><code>instruction_snapshot.prompt_template_name</code></li>
+<li><code>instruction_snapshot.prompt_template_version</code></li>
+<li><code>prompt_instruction_metrics.prompt_template</code></li>
+<li><code>prompt_instruction_metrics.output_format</code></li>
+<li><code>prompt_instruction_metrics.instruction_adherence</code></li>
+</ul>
+<p>추가 권장 수집값:</p>
+<table><thead><tr><th>Event</th><th>Field</th><th>목적</th></tr></thead><tbody>
+<tr><td><code>instruction_snapshot</code></td><td><code>prompt_template_hash</code></td><td>version 문자열이 같아도 내용 변경 감지</td></tr>
+<tr><td><code>instruction_snapshot</code></td><td><code>prompt_sections</code></td><td>system/tool_policy/output_contract/react_protocol별 변경 추적</td></tr>
+<tr><td><code>prompt_instruction_metrics</code></td><td><code>prompt_contract_hash</code></td><td>output contract 변경 감지</td></tr>
+<tr><td><code>run_start</code></td><td><code>prompt_variant</code></td><td>A/B 또는 experiment label</td></tr>
+<tr><td><code>run_start</code></td><td><code>evaluation_suite_id</code></td><td>어떤 fixture suite 기준인지 기록</td></tr>
+</tbody></table>
+<p>hash 예시:</p>
+<pre><code>prompt_template_hash = sha256(system + react_protocol + tool_policy + output_contract)
+prompt_contract_hash = sha256(output_contract)</code></pre>
+<h2>4. 데이터 모델 설계</h2>
+<h3>4.1 Prompt Run Identity</h3>
+<pre><code>@dataclass
+class PromptRunIdentity:
+    run_id: str
+    fixture_id: str | None
+    prompt_template_name: str
+    prompt_template_version: str
+    prompt_template_hash: str
+    prompt_variant: str | None
+    trace_path: str</code></pre>
+<h3>4.2 Prompt Regression Pair</h3>
+<pre><code>@dataclass
+class PromptRegressionPair:
+    fixture_id: str
+    baseline_run_id: str
+    candidate_run_id: str
+    baseline_analysis_id: str
+    candidate_analysis_id: str</code></pre>
+<h3>4.3 Prompt Regression Result</h3>
+<pre><code>@dataclass
+class PromptRegressionResult:
+    fixture_id: str
+    baseline: AnalysisResult
+    candidate: AnalysisResult
+    metrics: list[Finding]
+    score_delta: int
+    gate_changed: bool
+    gate_regressed: bool
+    new_findings: list[Finding]
+    resolved_findings: list[Finding]</code></pre>
+<h2>5. 구현 위치</h2>
+<h3>5.1 Reference Agent</h3>
+<p>대상 파일:</p>
+<ul>
+<li><code>judgeagent/reference/agent/weblog_agent/prompts.py</code></li>
+<li><code>judgeagent/reference/agent/weblog_agent/graph.py</code></li>
+</ul>
+<p>작업:</p>
+<ol>
+<li>prompt hash 계산 함수 추가</li>
+<li><code>instruction_snapshot</code>에 hash/section metadata 추가</li>
+<li><code>run_start</code>에 <code>prompt_variant</code>, <code>evaluation_suite_id</code> optional field 추가</li>
+</ol>
+<h3>5.2 Judge Agent Adapter</h3>
+<p>대상 파일:</p>
+<ul>
+<li><code>judgeagent/judge_agent/adapters/reference.py</code></li>
+<li><code>judgeagent/judge_agent/core/schema.py</code></li>
+</ul>
+<p>작업:</p>
+<ol>
+<li>trace의 prompt metadata를 <code>SimpleAgentRun.metadata</code>에 정규화</li>
+<li>prompt hash/version/name을 analysis result에서 접근 가능하게 유지</li>
+</ol>
+<h3>5.3 Prompt Regression Analyzer 신규 추가</h3>
+<p>신규 파일 제안:</p>
+<pre><code>judgeagent/judge_agent/analysis/prompt_regression.py</code></pre>
+<p>책임:</p>
+<ul>
+<li>baseline/candidate trace 또는 analysis result 비교</li>
+<li>score/gate/finding/tool/output 차이 계산</li>
+<li>regression finding 생성</li>
+</ul>
+<p>주요 함수:</p>
+<pre><code>def compare_prompt_runs(
+    baseline_trace: str,
+    candidate_trace: str,
+    adapter_name: str = &quot;reference-weblog-jsonl&quot;,
+) -&gt; PromptRegressionResult:
+    ...</code></pre>
+<pre><code>def detect_prompt_regressions(
+    baseline: AnalysisResult,
+    candidate: AnalysisResult,
+) -&gt; list[Finding]:
+    ...</code></pre>
+<h3>5.4 API 추가</h3>
+<p>대상 파일:</p>
+<ul>
+<li><code>judgeagent/backend/api.py</code></li>
+<li><code>judgeagent/backend/api_models.py</code></li>
+<li><code>judgeagent/backend/api_services.py</code></li>
+<li><code>judgeagent/backend/api_store.py</code></li>
+</ul>
+<p>신규 endpoint 제안:</p>
+<pre><code>POST /api/prompt-regressions
+GET  /api/prompt-regressions
+GET  /api/prompt-regressions/{regression_id}</code></pre>
+<p>Request 예시:</p>
+<pre><code>{
+  &quot;baseline&quot;: {
+    &quot;tracePath&quot;: &quot;artifacts/.../baseline.jsonl&quot;
+  },
+  &quot;candidate&quot;: {
+    &quot;tracePath&quot;: &quot;artifacts/.../candidate.jsonl&quot;
+  },
+  &quot;adapter&quot;: &quot;reference-weblog-jsonl&quot;
+}</code></pre>
+<p>Response 예시:</p>
+<pre><code>{
+  &quot;regression&quot;: {
+    &quot;id&quot;: &quot;preg_20260518_132700&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;baselineRunId&quot;: &quot;ref_baseline&quot;,
+    &quot;candidateRunId&quot;: &quot;ref_candidate&quot;,
+    &quot;summary&quot;: {
+      &quot;scoreDelta&quot;: -18,
+      &quot;baselineGate&quot;: &quot;pass&quot;,
+      &quot;candidateGate&quot;: &quot;warning&quot;,
+      &quot;gateRegressed&quot;: true,
+      &quot;newHighCriticalFindings&quot;: 2
+    },
+    &quot;findings&quot;: []
+  }
+}</code></pre>
+<h2>6. Metric별 판정 로직</h2>
+<h3>6.1 Gate regression</h3>
+<pre><code>GATE_RANK = {&quot;pass&quot;: 0, &quot;warning&quot;: 1, &quot;block&quot;: 2}
+
+def gate_regressed(baseline_gate, candidate_gate):
+    return GATE_RANK[candidate_gate] &gt; GATE_RANK[baseline_gate]</code></pre>
+<p>Finding 생성:</p>
+<pre><code>metric: gate_regression
+severity: critical if candidate_gate == block else high
+category: prompt
+evidence:
+  - baseline_gate=pass
+  - candidate_gate=warning</code></pre>
+<h3>6.2 New high severity findings</h3>
+<pre><code>def finding_key(f):
+    return (f.metric, f.category, str(f.location), tuple(f.evidence[:2]))</code></pre>
+<p>비교:</p>
+<pre><code>new = candidate_keys - baseline_keys
+new_high = [f for f in candidate.findings if key(f) in new and f.severity in {&quot;high&quot;, &quot;critical&quot;}]</code></pre>
+<p>Finding 생성:</p>
+<pre><code>metric: new_high_severity_findings
+severity: high 또는 critical
+category: prompt</code></pre>
+<h3>6.3 Prompt version regression score</h3>
+<p>권장 penalty:</p>
+<table><thead><tr><th>조건</th><th>Penalty</th></tr></thead><tbody>
+<tr><td>candidate score 하락폭</td><td><code>max(0, baseline.score - candidate.score)</code></td></tr>
+<tr><td>gate warning regression</td><td>15</td></tr>
+<tr><td>gate block regression</td><td>30</td></tr>
+<tr><td>새 high finding</td><td>개당 10</td></tr>
+<tr><td>새 critical finding</td><td>개당 20</td></tr>
+<tr><td>output contract regression</td><td>15</td></tr>
+<tr><td>validation path regression</td><td>20</td></tr>
+</tbody></table>
+<pre><code>score = max(0, 100 - penalty)</code></pre>
+<p>Finding 생성 기준:</p>
+<pre><code>score &lt; 85 → warning/high finding
+score &lt; 70 → block-level finding</code></pre>
+<h3>6.4 Tool and output stability score</h3>
+<p>비교 대상:</p>
+<ul>
+<li>tool sequence</li>
+<li>required section presence</li>
+<li>validation path presence</li>
+<li>target endpoint consistency</li>
+</ul>
+<p>Tool sequence 예시:</p>
+<pre><code>def tool_sequence(run):
+    return [e[&quot;tool&quot;] for e in run.raw_by_type(&quot;tool_start&quot;)]</code></pre>
+<p>간단한 안정성 계산:</p>
+<pre><code>stability = 1.0
+- 0.2 if required tool missing
+- 0.2 if validation path disappeared
+- 0.2 if output format became non-compliant
+- 0.2 if target endpoint mismatch appeared
+- 0.1~0.2 for major sequence edit distance</code></pre>
+<h2>7. 저장소 설계</h2>
+<p><code>ApiStore</code>에 prompt regression artifact 경로 추가:</p>
+<pre><code>artifacts/frontend-api/prompt-regressions/
+├── registry.json
+├── reports/*.md
+└── results/*.json</code></pre>
+<p><code>ApiStore</code> method 제안:</p>
+<pre><code>def prompt_regression_json_path(self, regression_id: str) -&gt; Path
+
+def prompt_regression_report_path(self, regression_id: str) -&gt; Path</code></pre>
+<h2>8. CLI 추가안</h2>
+<p><code>judgeagent/backend/cli.py</code>에 command 추가:</p>
+<pre><code>python -m judgeagent.backend.cli compare-prompt-regression \
+  --baseline-trace path/to/baseline.jsonl \
+  --candidate-trace path/to/candidate.jsonl \
+  --output prompt-regression-report.md \
+  --json prompt-regression.json</code></pre>
+<h2>9. 테스트 계획</h2>
+<h3>9.1 Unit test</h3>
+<p>신규 테스트 파일:</p>
+<pre><code>judgeagent/judge_agent/tests/test_prompt_regression.py</code></pre>
+<p>테스트 케이스:</p>
+<ol>
+<li>baseline pass, candidate pass → regression 없음</li>
+<li>baseline pass, candidate warning → <code>gate_regression</code> 생성</li>
+<li>candidate에 새 high finding → <code>new_high_severity_findings</code> 생성</li>
+<li>output contract만 깨짐 → <code>tool_and_output_stability_score</code> 하락</li>
+<li>prompt hash/version metadata가 비교 결과에 포함되는지 확인</li>
+</ol>
+<h3>9.2 Fixture 기반 test</h3>
+<p>사용 가능한 기존 fixture:</p>
+<ul>
+<li>baseline: <code>normal-login-error-spike</code></li>
+<li>candidate: <code>drift-prompt-output-contract</code></li>
+<li>candidate: <code>drift-validation-skipped</code></li>
+<li>candidate: <code>drift-wrong-endpoint</code></li>
+</ul>
+<p>예상:</p>
+<pre><code>normal-login-error-spike vs drift-prompt-output-contract
+→ output contract regression
+→ new high/medium prompt findings
+→ score 하락
+
+normal-login-error-spike vs drift-validation-skipped
+→ gate regression pass → block
+→ validation path regression</code></pre>
+<h2>10. 구현 순서</h2>
+<h3>Phase 1 — Trace metadata 보강</h3>
+<ol>
+<li>prompt hash 계산 추가</li>
+<li><code>instruction_snapshot</code>에 hash/sections 추가</li>
+<li>adapter에서 metadata 정규화</li>
+<li>trace emission test 추가</li>
+</ol>
+<h3>Phase 2 — 비교 분석 엔진</h3>
+<ol>
+<li><code>prompt_regression.py</code> 생성</li>
+<li>baseline/candidate analysis 수행</li>
+<li>score/gate/finding delta 계산</li>
+<li>4개 regression metric finding 생성</li>
+<li>markdown/json reporter 추가</li>
+</ol>
+<h3>Phase 3 — CLI/API 연결</h3>
+<ol>
+<li>CLI command 추가</li>
+<li>API request/response model 추가</li>
+<li>API service/store 추가</li>
+<li>frontend 연동을 고려한 DTO 확정</li>
+</ol>
+<h3>Phase 4 — 문서/엑셀 갱신</h3>
+<ol>
+<li><code>COMBINED_JUDGE_METRICS</code>에 regression metric 추가</li>
+<li><code>IMPLEMENTED_JUDGE_METRICS</code> 갱신</li>
+<li>API reference 갱신</li>
+<li>개발 가이드에 prompt regression flow 추가</li>
+</ol>
+<h2>11. 권장 MVP 범위</h2>
+<p>처음부터 모든 지표를 완벽히 구현하기보다 아래 3개부터 구현하는 것을 권장합니다.</p>
+<ol>
+<li><code>gate_regression</code></li>
+<li><code>new_high_severity_findings</code></li>
+<li><code>prompt_version_regression_score</code></li>
+</ol>
+<p>그 다음에 <code>tool_and_output_stability_score</code>를 추가하는 순서가 안전합니다.</p>
+<p>이유:</p>
+<ul>
+<li>gate/score/finding delta는 이미 Judge Agent 분석 결과만으로 계산 가능</li>
+<li>별도 복잡한 sequence similarity 없이도 regression 판단 가치가 큼</li>
+<li>tool/output stability는 추가 튜닝이 필요하므로 2차 구현이 적합</li>
+</ul>
+<h2>12. 완료 기준</h2>
+<ul class="checklist">
+<li>☐ 동일 fixture baseline/candidate 비교가 가능하다.</li>
+<li>☐ prompt version/hash가 regression report에 표시된다.</li>
+<li>☐ gate 악화가 <code>gate_regression</code>으로 탐지된다.</li>
+<li>☐ 새 high/critical finding이 <code>new_high_severity_findings</code>로 탐지된다.</li>
+<li>☐ 전체 regression score가 계산된다.</li>
+<li>☐ CLI 또는 API로 결과를 JSON/Markdown으로 생성할 수 있다.</li>
+<li>☐ fixture 기반 regression test가 통과한다.</li>
+</ul>
+</main>
+</body>
+</html>
