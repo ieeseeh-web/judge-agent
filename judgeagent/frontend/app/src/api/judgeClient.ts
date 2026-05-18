@@ -1,6 +1,6 @@
-import type { AnalysisSummary, ChatMessage, ConfigSnapshot, Finding, ReferenceRun } from '../types/judge';
+import type { AnalysisSummary, ChatMessage, ConfigSnapshot, Finding, PromptRegression, ReferenceRun } from '../types/judge';
 
-const BASE_URL = 'http://localhost:19001';
+const BASE_URL = import.meta.env.VITE_JUDGE_API_BASE_URL || 'http://localhost:19001';
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
@@ -72,6 +72,29 @@ export async function createAnalysis(referenceRunId: string, adapter: string): P
     }),
   });
   return data.analysis;
+}
+
+
+export async function createPromptRegression(baselineReferenceRunId: string, candidateReferenceRunId: string, adapter: string): Promise<PromptRegression> {
+  const data = await apiFetch<any>('/api/prompt-regressions', {
+    method: 'POST',
+    body: JSON.stringify({
+      baseline: { referenceRunId: baselineReferenceRunId },
+      candidate: { referenceRunId: candidateReferenceRunId },
+      adapter,
+    }),
+  });
+  const regression = data.regression;
+  return {
+    id: regression.id,
+    status: regression.status,
+    summary: regression.summary,
+    findings: regression.findings || [],
+    newFindings: regression.newFindings || [],
+    resolvedFindings: regression.resolvedFindings || [],
+    reportPath: regression.reportPath,
+    jsonPath: regression.jsonPath,
+  };
 }
 
 export async function createJudgeSession(analysisId: string, mode: string): Promise<any> {

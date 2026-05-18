@@ -7,7 +7,7 @@ export type ReferenceRunMode = 'fixture' | 'custom-analysis' | 'chat';
 export type ReferenceEvent = {
   id: string;
   step: number;
-  type: 'thought' | 'action' | 'observation' | 'tool' | 'rag' | 'mcp' | 'validation' | 'final';
+  type: 'thought' | 'action' | 'observation' | 'tool' | 'rag' | 'mcp' | 'validation' | 'final' | 'final_output' | string;
   title: string;
   detail: string;
   payload?: Record<string, unknown>;
@@ -76,4 +76,32 @@ export type ConfigSnapshot = {
   llmProvider: string;
   model: string;
   metricCount: number;
+};
+
+
+export type PromptRegressionSummary = {
+  baselineRunId: string;
+  candidateRunId: string;
+  baselineGate: Gate;
+  candidateGate: Gate;
+  baselineScore: number;
+  candidateScore: number;
+  scoreDelta: number;
+  gateChanged: boolean;
+  gateRegressed: boolean;
+  newFindingCount: number;
+  newHighCriticalFindingCount: number;
+  resolvedFindingCount: number;
+  regressionScore: number;
+};
+
+export type PromptRegression = {
+  id: string;
+  status: 'succeeded' | 'failed' | 'running' | 'queued';
+  summary: PromptRegressionSummary;
+  findings: Finding[];
+  newFindings: Finding[];
+  resolvedFindings: Finding[];
+  reportPath?: string;
+  jsonPath?: string;
 };

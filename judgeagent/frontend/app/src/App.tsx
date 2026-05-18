@@ -3,7 +3,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { ReferenceAgentPanel } from './components/ReferenceAgentPanel';
 import { MetricsPanel } from './components/MetricsPanel';
 import * as api from './api/judgeClient';
-import type { ChatMessage, ConfigSnapshot, ReferenceRun, AnalysisSummary, Finding } from './types/judge';
+import type { ChatMessage, ConfigSnapshot, ReferenceRun, AnalysisSummary, Finding, PromptRegression } from './types/judge';
 import { ConfigProvider, Layout, Row, Col, Typography, message, Card } from 'antd';
 
 const { Header, Content } = Layout;
@@ -12,6 +12,8 @@ const { Title } = Typography;
 function App() {
   const [config, setConfig] = useState<ConfigSnapshot | null>(null);
   const [referenceRun, setReferenceRun] = useState<ReferenceRun | null>(null);
+  const [baselineRun, setBaselineRun] = useState<ReferenceRun | null>(null);
+  const [promptRegression, setPromptRegression] = useState<PromptRegression | null>(null);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -46,6 +48,7 @@ function App() {
       setSummary(null);
       setFindings([]);
       setSessionId(null);
+      setPromptRegression(null);
       setMessages([{
         id: `sys-${Date.now()}`,
         role: 'system',
@@ -54,6 +57,36 @@ function App() {
       }]);
     } catch (e) {
       messageApi.error('Failed to run: ' + e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const handleSetBaseline = () => {
+    if (!referenceRun || referenceRun.status !== 'succeeded') return;
+    setBaselineRun(referenceRun);
+    messageApi.success(`Baseline set: ${referenceRun.fixture || referenceRun.id}`);
+  };
+
+  const handlePromptRegression = async () => {
+    if (!baselineRun || !referenceRun || !config) return;
+    if (baselineRun.id === referenceRun.id) {
+      messageApi.warning('Baseline and candidate runs must be different.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const regression = await api.createPromptRegression(baselineRun.id, referenceRun.id, config.adapter);
+      setPromptRegression(regression);
+      setMessages(prev => [...prev, {
+        id: `sys-pr-${Date.now()}`,
+        role: 'system',
+        content: `🧪 Prompt regression comparison complete. Regression score: ${regression.summary?.regressionScore ?? 'n/a'}.`,
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
+    } catch (e) {
+      messageApi.error('Failed to compare prompt regression: ' + e);
     } finally {
       setIsLoading(false);
     }
@@ -142,6 +175,9 @@ function App() {
                   referenceRun={safeReferenceRun}
                   onRun={handleRun}
                   onJudge={handleJudge}
+                  onSetBaseline={handleSetBaseline}
+                  onComparePromptRegression={handlePromptRegression}
+                  baselineRun={baselineRun}
                   isLoading={isLoading}
                 />
               </div>
@@ -153,7 +189,7 @@ function App() {
               {/* Metrics Section */}
               <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', flexShrink: 0 }}>
                 <Title level={4} style={{ margin: '0 0 16px 0' }}>Judge Agent Metrics</Title>
-                <MetricsPanel summary={summary} findings={findings} />
+                <MetricsPanel summary={summary} findings={findings} promptRegression={promptRegression} />
               </Card>
 
               {/* Chat Section */}

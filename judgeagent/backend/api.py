@@ -14,6 +14,7 @@ from .api_models import (
     analysis_request,
     judge_message_request,
     judge_session_request,
+    prompt_regression_request,
     reference_run_request,
 )
 from .api_services import (
@@ -22,14 +23,17 @@ from .api_services import (
     create_judge_session,
     get_analysis,
     get_judge_session,
+    get_prompt_regression,
     get_reference_run,
     get_reference_trace,
     health,
     list_analyses,
     list_judge_sessions,
+    list_prompt_regressions,
     list_reference_fixtures,
     list_reference_runs,
     metric_list,
+    create_prompt_regression,
     run_reference_agent,
     send_judge_message,
 )
@@ -114,6 +118,20 @@ def create_app():
     @app.get("/api/analyses/{analysis_id}")
     def api_get_analysis(analysis_id: str):
         return get_analysis(analysis_id)
+
+
+    @app.post("/api/prompt-regressions")
+    async def api_create_prompt_regression(request: Request):
+        payload = await request.json()
+        return create_prompt_regression(prompt_regression_request(payload))
+
+    @app.get("/api/prompt-regressions")
+    def api_list_prompt_regressions():
+        return list_prompt_regressions()
+
+    @app.get("/api/prompt-regressions/{regression_id}")
+    def api_get_prompt_regression(regression_id: str):
+        return get_prompt_regression(regression_id)
 
     @app.post("/api/judge/sessions")
     async def api_create_judge_session(request: Request):

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReferenceRun } from '../types/judge';
 import { ReferenceChatView } from './ReferenceChatView';
 import { Card, Select, Button, Space, Typography, Tag, Divider, Row, Col } from 'antd';
-import { PlayCircleOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, ExperimentOutlined, BranchesOutlined, FlagOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -10,10 +10,13 @@ type ReferenceAgentPanelProps = {
   referenceRun: ReferenceRun;
   onRun: (fixtureId: string, useLlm: boolean) => void;
   onJudge: () => void;
+  onSetBaseline: () => void;
+  onComparePromptRegression: () => void;
+  baselineRun: ReferenceRun | null;
   isLoading?: boolean;
 };
 
-export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, isLoading }: ReferenceAgentPanelProps) {
+export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, onSetBaseline, onComparePromptRegression, baselineRun, isLoading }: ReferenceAgentPanelProps) {
   const [selectedFixture, setSelectedFixture] = useState(referenceRun.fixture || 'normal-login-error-spike');
   const [selectedMode, setSelectedMode] = useState('hybrid');
 
@@ -70,10 +73,24 @@ export function ReferenceAgentPanel({ referenceRun, onRun, onJudge, isLoading }:
               <Button type="primary" icon={<ExperimentOutlined />} onClick={onJudge} disabled={isLoading || referenceRun.status !== 'succeeded'}>
                 Judge this trace
               </Button>
+              <Button icon={<FlagOutlined />} onClick={onSetBaseline} disabled={isLoading || referenceRun.status !== 'succeeded'}>
+                Set baseline
+              </Button>
+              <Button icon={<BranchesOutlined />} onClick={onComparePromptRegression} disabled={isLoading || referenceRun.status !== 'succeeded' || !baselineRun}>
+                Compare prompt regression
+              </Button>
             </Space>
           </Space>
         </Col>
       </Row>
+
+      {baselineRun && (
+        <div style={{ marginBottom: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px' }}>
+          <Text type="secondary" style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>Prompt regression baseline</Text>
+          <Text strong style={{ fontSize: '0.85rem' }}>{baselineRun.fixture || baselineRun.id}</Text>
+          <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block' }}>{baselineRun.id}</Text>
+        </div>
+      )}
 
       {Object.keys(referenceRun.eventCounts).length > 0 && (
         <div style={{ marginBottom: '24px' }}>

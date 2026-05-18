@@ -1,4 +1,4 @@
-import type { AnalysisSummary, Finding } from '../types/judge';
+import type { AnalysisSummary, Finding, PromptRegression } from '../types/judge';
 import { Typography, Tag, Progress, Collapse, Space, Row, Col, Badge } from 'antd';
 import {
   CheckCircleOutlined,
@@ -12,6 +12,7 @@ const { Text, Title } = Typography;
 type MetricsPanelProps = {
   summary: AnalysisSummary | null;
   findings: Finding[];
+  promptRegression?: PromptRegression | null;
 };
 
 const SEVERITY_CONFIG = {
@@ -96,8 +97,32 @@ function FindingItem({ finding }: { finding: Finding }) {
   return <Collapse ghost size="small" items={items} style={{ border: '1px solid #e2e8f0', borderRadius: 8, backgroundColor: '#fff', marginBottom: 6 }} />;
 }
 
-export function MetricsPanel({ summary, findings }: MetricsPanelProps) {
-  if (!summary) {
+function PromptRegressionSummaryCard({ regression }: { regression: PromptRegression }) {
+  const s = regression.summary;
+  const tone = s?.gateRegressed || (s?.regressionScore ?? 100) < 85 ? GATE_CONFIG.block : GATE_CONFIG.pass;
+  return (
+    <div style={{ backgroundColor: tone.bg, border: `1px solid ${tone.border}`, borderRadius: 10, padding: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <Text strong style={{ color: tone.color }}>Prompt Regression</Text>
+        <Tag color={s?.gateRegressed ? 'error' : 'success'}>{s?.gateRegressed ? 'REGRESSED' : 'STABLE'}</Tag>
+      </div>
+      <Row gutter={8}>
+        <Col span={6}><Text type="secondary" style={{ fontSize: '0.7rem' }}>Regression Score</Text><br/><Text strong>{s?.regressionScore ?? '—'}</Text></Col>
+        <Col span={6}><Text type="secondary" style={{ fontSize: '0.7rem' }}>Baseline</Text><br/><Text strong>{s?.baselineGate ?? '—'} / {s?.baselineScore ?? '—'}</Text></Col>
+        <Col span={6}><Text type="secondary" style={{ fontSize: '0.7rem' }}>Candidate</Text><br/><Text strong>{s?.candidateGate ?? '—'} / {s?.candidateScore ?? '—'}</Text></Col>
+        <Col span={6}><Text type="secondary" style={{ fontSize: '0.7rem' }}>New High/Critical</Text><br/><Text strong>{s?.newHighCriticalFindingCount ?? 0}</Text></Col>
+      </Row>
+      {regression.findings?.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          {regression.findings.map((finding) => <FindingItem key={finding.id} finding={finding} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MetricsPanel({ summary, findings, promptRegression }: MetricsPanelProps) {
+  if (!summary && !promptRegression) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <InfoCircleOutlined style={{ fontSize: 24, color: '#94a3b8', marginBottom: 8 }} />
@@ -106,12 +131,19 @@ export function MetricsPanel({ summary, findings }: MetricsPanelProps) {
     );
   }
 
-  const gateKey = summary.gateCounts.block > 0 ? 'block' : summary.gateCounts.warning > 0 ? 'warning' : 'pass';
+  if (!summary && promptRegression) {
+    return <PromptRegressionSummaryCard regression={promptRegression} />;
+  }
+
+  const currentSummary = summary as AnalysisSummary;
+  const gateKey = currentSummary.gateCounts.block > 0 ? 'block' : currentSummary.gateCounts.warning > 0 ? 'warning' : 'pass';
   const gate = GATE_CONFIG[gateKey];
   const totalFindings = findings.length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {promptRegression && <PromptRegressionSummaryCard regression={promptRegression} />}
+
       {/* Gate + Severity summary row */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
         {/* Gate Status */}
@@ -124,7 +156,7 @@ export function MetricsPanel({ summary, findings }: MetricsPanelProps) {
         {/* Severity counts */}
         {(['critical', 'high', 'medium', 'low'] as const).map((sev) => {
           const cfg = SEVERITY_CONFIG[sev];
-          const count = summary.severityCounts[sev] ?? 0;
+          const count = currentSummary.severityCounts[sev] ?? 0;
           return (
             <div key={sev} style={{ flex: 1, backgroundColor: count > 0 ? cfg.bg : '#f8fafc', border: `1px solid ${count > 0 ? cfg.border : '#e2e8f0'}`, borderRadius: 10, padding: '10px 6px', textAlign: 'center' }}>
               <Text style={{ fontWeight: 700, fontSize: '1.2rem', color: count > 0 ? cfg.color : '#94a3b8', display: 'block' }}>{count}</Text>
@@ -141,13 +173,13 @@ export function MetricsPanel({ summary, findings }: MetricsPanelProps) {
       </div>
 
       {/* Top Findings list */}
-      {summary.topFindings && summary.topFindings.length > 0 && (
+      {currentSummary.topFindings && currentSummary.topFindings.length > 0 && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <Title level={5} style={{ margin: 0 }}>Top Findings</Title>
-            <Badge count={summary.topFindings.length} color="#64748b" />
+            <Badge count={currentSummary.topFindings.length} color="#64748b" />
           </div>
-          {summary.topFindings.map((f) => (
+          {currentSummary.topFindings.map((f) => (
             <FindingItem key={f.id} finding={f} />
           ))}
         </div>

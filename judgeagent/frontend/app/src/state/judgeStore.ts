@@ -9,7 +9,7 @@ export type JudgeViewState = {
 };
 
 export const initialViewState: JudgeViewState = {
-  selectedFindingId: data.findings[0]?.id ?? '',
+  selectedFindingId: (data.findings as Finding[])[0]?.id ?? '',
   activeTab: 'review',
 };
 

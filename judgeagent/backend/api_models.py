@@ -51,6 +51,19 @@ class JudgeMessageRequest:
     context: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class PromptRegressionEndpoint:
+    tracePath: Optional[str] = None
+    referenceRunId: Optional[str] = None
+
+
+@dataclass
+class PromptRegressionRequest:
+    baseline: PromptRegressionEndpoint
+    candidate: PromptRegressionEndpoint
+    adapter: str = "reference-weblog-jsonl"
+
+
 def reference_run_request(data: Dict[str, Any]) -> ReferenceRunRequest:
     return ReferenceRunRequest(
         mode=str(data.get("mode") or "fixture"),
@@ -84,3 +97,19 @@ def judge_session_request(data: Dict[str, Any]) -> JudgeSessionRequest:
 
 def judge_message_request(data: Dict[str, Any]) -> JudgeMessageRequest:
     return JudgeMessageRequest(content=str(data.get("content") or ""), context=data.get("context") or {})
+
+
+def prompt_regression_request(data: Dict[str, Any]) -> PromptRegressionRequest:
+    baseline = data.get("baseline") or {}
+    candidate = data.get("candidate") or {}
+    return PromptRegressionRequest(
+        baseline=PromptRegressionEndpoint(
+            tracePath=baseline.get("tracePath") or baseline.get("trace_path"),
+            referenceRunId=baseline.get("referenceRunId") or baseline.get("reference_run_id"),
+        ),
+        candidate=PromptRegressionEndpoint(
+            tracePath=candidate.get("tracePath") or candidate.get("trace_path"),
+            referenceRunId=candidate.get("referenceRunId") or candidate.get("reference_run_id"),
+        ),
+        adapter=str(data.get("adapter") or "reference-weblog-jsonl"),
+    )

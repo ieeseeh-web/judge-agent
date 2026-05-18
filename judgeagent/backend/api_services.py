@@ -12,13 +12,14 @@ from judgeagent.reference.agent.weblog_agent.trace import TraceLogger
 
 from judgeagent.judge_agent.analysis.analyzer import analyze_traces
 from judgeagent.judge_agent.analysis.reporter import markdown_report
+from judgeagent.judge_agent.analysis.prompt_regression import compare_prompt_runs, markdown_prompt_regression_report
 from judgeagent.judge_agent.conversation.agent import HybridConversationAgent, ToolBasedConversationAgent
 from judgeagent.judge_agent.conversation.graph import GraphConversationAgent
 from judgeagent.judge_agent.conversation.state import ConversationState, load_conversation_state, save_conversation_state
 from judgeagent.judge_agent.core.config import app_config, config_dir, llm_profiles_config
 from judgeagent.judge_agent.core.metrics import list_metrics
 from judgeagent.judge_agent.llm.clients import create_llm_client
-from .api_models import ApiError, AnalysisRequest, JudgeMessageRequest, JudgeSessionRequest, ReferenceRunRequest
+from .api_models import ApiError, AnalysisRequest, JudgeMessageRequest, JudgeSessionRequest, PromptRegressionRequest, ReferenceRunRequest
 from .api_store import ApiStore, make_id
 
 
@@ -340,3 +341,67 @@ def send_judge_message(session_id: str, request: JudgeMessageRequest, store: Opt
         "toolCalls": [call.to_dict() for call in state.tool_calls[-3:]],
     }
     return {"message": message, "session": _session_response(state, mode=mode, analysis_id=meta.get("analysisId"))}
+
+
+def _prompt_regression_trace_path(endpoint, store: ApiStore) -> str:
+    if endpoint.referenceRunId:
+        run = get_reference_run(endpoint.referenceRunId, store=store)["run"]
+        trace_path = str(run.get("tracePath") or "")
+    else:
+        trace_path = str(endpoint.tracePath or "")
+    if not trace_path:
+        raise ApiError("BAD_REQUEST", "tracePath or referenceRunId is required for prompt regression endpoint")
+    if not Path(trace_path).exists():
+        raise ApiError("TRACE_NOT_FOUND", "Trace file not found", {"tracePath": trace_path}, 404)
+    return trace_path
+
+
+def create_prompt_regression(request: PromptRegressionRequest, store: Optional[ApiStore] = None) -> Dict[str, Any]:
+    store = store or ApiStore()
+    store.ensure()
+    baseline_trace = _prompt_regression_trace_path(request.baseline, store)
+    candidate_trace = _prompt_regression_trace_path(request.candidate, store)
+    regression_id = make_id("preg")
+    try:
+        result = compare_prompt_runs(baseline_trace, candidate_trace, adapter_name=request.adapter)
+    except Exception as exc:
+        item = store.upsert("prompt_regressions", {"id": regression_id, "status": "failed", "error": {"type": exc.__class__.__name__, "message": str(exc)}})
+        raise ApiError("PROMPT_REGRESSION_FAILED", "Prompt regression comparison failed", item, 500) from exc
+
+    report = markdown_prompt_regression_report(result)
+    report_path = store.prompt_regression_report_path(regression_id)
+    json_path = store.prompt_regression_json_path(regression_id)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    data = result.to_dict()
+    json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    report_path.write_text(report, encoding="utf-8")
+    item = store.upsert("prompt_regressions", {
+        "id": regression_id,
+        "status": "succeeded",
+        "adapter": request.adapter,
+        "baseline": {"tracePath": baseline_trace, "referenceRunId": request.baseline.referenceRunId},
+        "candidate": {"tracePath": candidate_trace, "referenceRunId": request.candidate.referenceRunId},
+        "summary": data.get("summary", {}),
+        "findings": data.get("findings", []),
+        "newFindings": data.get("newFindings", []),
+        "resolvedFindings": data.get("resolvedFindings", []),
+        "reportPath": str(report_path),
+        "jsonPath": str(json_path),
+    })
+    return {"regression": item, "reportExcerpt": report[:4000]}
+
+
+def list_prompt_regressions(store: Optional[ApiStore] = None) -> Dict[str, Any]:
+    return {"regressions": (store or ApiStore()).list("prompt_regressions")}
+
+
+def get_prompt_regression(regression_id: str, store: Optional[ApiStore] = None) -> Dict[str, Any]:
+    store = store or ApiStore()
+    try:
+        item = store.get("prompt_regressions", regression_id)
+    except KeyError as exc:
+        raise ApiError("PROMPT_REGRESSION_NOT_FOUND", "Prompt regression not found", {"regressionId": regression_id}, 404) from exc
+    report_path = Path(item.get("reportPath") or "")
+    excerpt = report_path.read_text(encoding="utf-8")[:4000] if report_path.exists() else ""
+    return {"regression": item, "reportExcerpt": excerpt}

@@ -32,6 +32,7 @@ class ApiStore:
         self.reference_root = self.root / "reference-runs"
         self.analysis_root = self.root / "analyses"
         self.session_root = self.root / "judge-sessions"
+        self.prompt_regression_root = self.root / "prompt-regressions"
 
     def ensure(self) -> None:
         for path in [
@@ -39,6 +40,8 @@ class ApiStore:
             self.reference_root / "reports",
             self.analysis_root / "reports",
             self.session_root,
+            self.prompt_regression_root / "reports",
+            self.prompt_regression_root / "results",
         ]:
             path.mkdir(parents=True, exist_ok=True)
 
@@ -49,6 +52,8 @@ class ApiStore:
             return self.analysis_root / "registry.json"
         if kind == "sessions":
             return self.session_root / "registry.json"
+        if kind == "prompt_regressions":
+            return self.prompt_regression_root / "registry.json"
         raise KeyError(kind)
 
     def _read_registry(self, kind: str) -> Dict[str, Dict[str, Any]]:
@@ -96,3 +101,9 @@ class ApiStore:
     def session_dir(self) -> Path:
         self.ensure()
         return self.session_root
+
+    def prompt_regression_json_path(self, regression_id: str) -> Path:
+        return self.prompt_regression_root / "results" / f"{safe_session_id(regression_id)}.json"
+
+    def prompt_regression_report_path(self, regression_id: str) -> Path:
+        return self.prompt_regression_root / "reports" / f"{safe_session_id(regression_id)}.md"
