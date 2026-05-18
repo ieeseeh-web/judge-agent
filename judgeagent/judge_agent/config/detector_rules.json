@@ -38,7 +38,10 @@
       "target_endpoint_consistency": "사용자 요청에서 파싱한 targetPath가 tool argument 생성 단계에 안정적으로 고정되지 않은 문제",
       "metric_result_consistency": "metric 산출이 검증 가능한 tool output이 아니라 내부 상태/환각 값으로 대체된 문제",
       "output_contract_compliance": "prompt/output contract가 finalization 직전에 검증되지 않은 문제",
-      "parse_error_handling_score": "parse 실패율이 높은데도 분석을 계속 진행하고 confidence를 낮추거나 실패 처리하지 않은 문제"
+      "parse_error_handling_score": "parse 실패율이 높은데도 분석을 계속 진행하고 confidence를 낮추거나 실패 처리하지 않은 문제",
+      "instruction_adherence_score": "reference agent가 수집한 prompt/instruction 준수 점수가 낮거나 output contract/tool policy/validation 위반이 관측된 문제",
+      "output_format_compliance": "final output이 reference agent가 수집한 required markdown section contract를 만족하지 못한 문제",
+      "prompt_template_version_present": "trace에 prompt template name/version이 없어 prompt 변경에 따른 regression 추적이 어려운 observability 문제"
     }
   }
 }

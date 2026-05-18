@@ -5,8 +5,8 @@
 ## 1. 요약
 
 - 전체 계획/후보 지표: **36개**
-- 실제 구현 지표: **8개**
-- 미구현/계획 지표: **28개**
+- 실제 구현 지표: **11개**
+- 미구현/계획 지표: **25개**
 
 ## 2. 상태 정의
 
@@ -19,21 +19,21 @@
 
 | No | Metric | Implementation Status | Category | Registry Severity | Actual Severity | Measurement Method | Value Type | Description | Detector Method | Trace Events Used | Implemented Failure Rule | MVP Priority | Reference Agent Priority |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | output_contract_compliance | Implemented | Prompt / Instruction | High | critical/high | deterministic parser | pass/fail | final output이 markdown contract를 만족하는지. | output_contract() | final_output | final_output 누락/공백 또는 필수 Markdown 섹션 누락 | - | 1 |
+| 1 | output_contract_compliance | Implemented | Prompt / Instruction | High | critical/high | deterministic parser | pass/fail | final output이 markdown contract를 만족하는지. | output_contract() | final_output | final_output missing/empty or required markdown sections missing | - | 1 |
 | 2 | tool_argument_correctness | Planned | Tool Use | High | - | rule (schema + context) | 0.0 ~ 1.0 | tool argument가 schema와 context를 만족하는지. | - | - | - | 1 | - |
-| 3 | target_endpoint_consistency | Implemented | Tool Use | High | high | rule (context) | pass/fail | 사용자 요청 target endpoint와 tool/metric path가 일치하는지. | wrong_endpoint() | run_start/chat_turn_start, tool_start, tool_end | 사용자 요청 target path와 tool argument/metric path 불일치 | - | 2 |
+| 3 | target_endpoint_consistency | Implemented | Tool Use | High | high | rule (context) | pass/fail | 사용자 요청 target endpoint와 tool/metric path가 일치하는지. | wrong_endpoint() | run_start/chat_turn_start, tool_start, tool_end | tool argument or metric path differs from user target path | - | 2 |
 | 4 | tool_error_handling_score | Planned | Tool Use | Critical | - | rule | 0.0 ~ 1.0 | tool error를 적절히 처리했는지. | - | - | - | 2 | - |
 | 5 | answer_context_groundedness | Planned | Context / Retrieval | High | - | LLM judge | 0.0 ~ 1.0 | final output이 retrieved context에 근거하는지. | - | - | - | 3 | - |
-| 6 | metric_result_consistency | Implemented | Final Output / Completion | High | high | rule (tool output) | pass/fail | metric claim이 검증 가능한 tool output에서 왔는지. | metric_consistency() | react_step, tool_end, node_start, node_end | compute step은 있으나 compute_log_metrics tool_end가 없거나, faultInjected metrics 사용 | - | 3 |
+| 6 | metric_result_consistency | Implemented | Final Output / Completion | High | high | rule (tool output) | pass/fail | metric claim이 검증 가능한 tool output에서 왔는지. | metric_consistency() | react_step, tool_end, node_start, node_end | compute step without compute_log_metrics result or faultInjected metrics | - | 3 |
 | 7 | node_sequence_correctness | Planned | LangGraph Flow | Critical | - | rule (expected path) | 0.0 ~ 1.0 | 실행된 node 순서가 기대 workflow와 맞는지. | - | - | - | 4 | - |
-| 8 | validation_path_coverage | Implemented | LangGraph Flow | Critical | critical | rule (expected path) | pass/fail | validate_findings node와 validation_result가 실행되었는지. | validation_path() | node_start, validation_result, edge_selected | validate_findings node/result 누락 또는 validation skip edge 감지 | - | 4 |
+| 8 | validation_path_coverage | Implemented | LangGraph Flow | Critical | critical | rule (expected path) | pass/fail | validate_findings node와 validation_result가 실행되었는지. | validation_path() | node_start, validation_result, edge_selected | validate_findings node/result missing or validation skip edge detected | - | 4 |
 | 9 | verification_coverage | Planned | Final Output / Completion | High | - | rule | 0.0 ~ 1.0 | 완료 전 필요한 검증을 수행했는지. | - | - | - | 5 | - |
 | 10 | parse_error_handling_score | Implemented | Tool Use | High | high | rule | 0.0 ~ 1.0 | 높은 parse error ratio를 차단/반영했는지. | parse_error_handling() | tool_end(parse_access_log), final_output, validation_result | parse_error_count / total_lines > 0.5 | - | 5 |
-| 11 | rag_context_presence_and_usage | Implemented | Context / Retrieval | Medium | medium | rule | pass/fail | RAG retrieval과 final report 반영 여부. | rag_mcp_presence() | tool_end, final_output | retrieve_runbook 누락 또는 final report의 ## RAG Context 섹션 누락 | - | 6 |
-| 12 | instruction_adherence_score | Planned | Prompt / Instruction | High | - | LLM judge + rule | 0.0 ~ 1.0 | Agent가 주어진 instruction을 따른 정도. | - | - | - | 6 | - |
-| 13 | mcp_context_presence_and_usage | Implemented | ReAct / RAG / MCP | Medium | medium | rule | pass/fail | MCP service context 수집과 final report 반영 여부. | rag_mcp_presence() | mcp_end, final_output | mcp_end tools/call 누락 또는 final report의 ## MCP Context 섹션 누락 | - | 7 |
+| 11 | rag_context_presence_and_usage | Implemented | Context / Retrieval | Medium | medium | rule | pass/fail | RAG retrieval과 final report 반영 여부. | rag_mcp_presence() | tool_end, final_output | retrieve_runbook missing or ## RAG Context missing | - | 6 |
+| 12 | instruction_adherence_score | Implemented | Prompt / Instruction | High | high | LLM judge + rule | 0.0 ~ 1.0 | Agent가 주어진 instruction을 따른 정도. | instruction_adherence() | prompt_instruction_metrics | score < 1.0 or violations present | 6 | - |
+| 13 | mcp_context_presence_and_usage | Implemented | ReAct / RAG / MCP | Medium | medium | rule | pass/fail | MCP service context 수집과 final report 반영 여부. | rag_mcp_presence() | mcp_end, final_output | mcp tools/call missing or ## MCP Context missing | - | 7 |
 | 14 | redundant_tool_call_count | Planned | Tool Use | Medium | - | rule (중복 탐지) | count (정수) | 같은 목적의 중복 tool 호출 횟수. | - | - | - | 7 | - |
-| 15 | chat_context_grounding | Implemented | Context / Retrieval | Medium | medium/low | rule | pass/fail | 후속 대화가 직전 analysis/focus/evidence에 grounded 되었는지. | chat_context() | chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated | 후속 대화가 last analysis/context evidence에 grounded 되지 않음 | - | 8 |
+| 15 | chat_context_grounding | Implemented | Context / Retrieval | Medium | medium/low | rule | pass/fail | 후속 대화가 직전 analysis/focus/evidence에 grounded 되었는지. | chat_context() | chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated | follow-up response not grounded in last analysis/context evidence | - | 8 |
 | 16 | missing_required_context | Planned | Context / Retrieval | High | - | reference fixture / LLM judge | 0.0 ~ 1.0 | 답변에 필요한 context가 검색되지 않았는지. | - | - | - | - | - |
 | 17 | retrieval_context_precision | Planned | Context / Retrieval | Medium | - | rule (비율) | 0.0 ~ 1.0 | retrieved chunk 중 관련 있는 chunk의 비율. | - | - | - | - | - |
 | 18 | retrieval_context_relevance | Planned | Context / Retrieval | Medium | - | LLM judge / embedding sim | 0.0 ~ 1.0 | retriever가 가져온 document/chunk가 user input과 관련 있는지. | - | - | - | - | - |
@@ -48,8 +48,8 @@
 | 27 | memory_update_correctness | Planned | Memory / State | Medium | - | rule | pass/fail | 저장해야 할 memory를 저장했고, 저장하면 안 되는 내용을 저장하지 않았는지. | - | - | - | - | - |
 | 28 | state_freshness_score | Planned | Memory / State | Medium | - | rule (timestamp/version) | 0.0 ~ 1.0 | LangGraph state/checkpoint가 최신인지. | - | - | - | - | - |
 | 29 | state_value_grounding | Planned | Memory / State | High | - | rule (event 추적) | 0.0 ~ 1.0 | node가 사용한 state 값이 이전 event에서 생성/검증된 값인지. | - | - | - | - | - |
-| 30 | output_format_compliance | Planned | Prompt / Instruction | Medium | - | deterministic parser | pass/fail | 요구된 output format을 지켰는지. | - | - | - | - | - |
-| 31 | prompt_template_version_present | Planned | Prompt / Instruction | Low | - | trace 검사 | 존재 여부 | trace에 prompt template 이름/version이 기록되어 있는지. | - | - | - | - | - |
+| 30 | output_format_compliance | Implemented | Prompt / Instruction | Medium | medium | deterministic parser | pass/fail | 요구된 output format을 지켰는지. | output_format_compliance() | prompt_instruction_metrics, final_output fallback | required output format is not compliant | - | - |
+| 31 | prompt_template_version_present | Implemented | Prompt / Instruction | Low | low | trace 검사 | 존재 여부 | trace에 prompt template 이름/version이 기록되어 있는지. | prompt_template_version() | instruction_snapshot, prompt_instruction_metrics | prompt template name/version missing | - | - |
 | 32 | action_grounding_score | Planned | ReAct / RAG / MCP | High | - | rule + LLM judge | 0.0 ~ 1.0 | action argument가 user input/state/observation에서 근거를 갖는가. | - | - | - | - | - |
 | 33 | observation_utilization_score | Planned | ReAct / RAG / MCP | Medium | - | LLM judge | 0.0 ~ 1.0 | tool observation이 다음 reasoning/final report에 반영되는가. | - | - | - | - | - |
 | 34 | react_step_completeness | Planned | ReAct / RAG / MCP | High | - | rule + LLM judge | 0.0 ~ 1.0 | Thought/Action/Observation sequence가 완전한가. | - | - | - | - | - |
@@ -71,7 +71,7 @@
 | Detector Method | output_contract() |
 | Trace Events Used | final_output |
 | Trace Fields Used | final_output.content |
-| Implemented Failure Rule | final_output 누락/공백 또는 필수 Markdown 섹션 누락 |
+| Implemented Failure Rule | final_output missing/empty or required markdown sections missing |
 | Confidence | 0.95 |
 
 ### 4.2 `target_endpoint_consistency`
@@ -87,7 +87,7 @@
 | Detector Method | wrong_endpoint() |
 | Trace Events Used | run_start/chat_turn_start, tool_start, tool_end |
 | Trace Fields Used | user_input, filter_log_records.path_pattern, compute_log_metrics.top_paths[].path |
-| Implemented Failure Rule | 사용자 요청 target path와 tool argument/metric path 불일치 |
+| Implemented Failure Rule | tool argument or metric path differs from user target path |
 | Confidence | 0.96 |
 
 ### 4.3 `metric_result_consistency`
@@ -103,7 +103,7 @@
 | Detector Method | metric_consistency() |
 | Trace Events Used | react_step, tool_end, node_start, node_end |
 | Trace Fields Used | react_step.action, tool_end.tool, state.metrics.faultInjected |
-| Implemented Failure Rule | compute step은 있으나 compute_log_metrics tool_end가 없거나, faultInjected metrics 사용 |
+| Implemented Failure Rule | compute step without compute_log_metrics result or faultInjected metrics |
 | Confidence | 0.90/0.98 |
 
 ### 4.4 `validation_path_coverage`
@@ -119,7 +119,7 @@
 | Detector Method | validation_path() |
 | Trace Events Used | node_start, validation_result, edge_selected |
 | Trace Fields Used | node_start.node, validation_result count, edge_selected.reason |
-| Implemented Failure Rule | validate_findings node/result 누락 또는 validation skip edge 감지 |
+| Implemented Failure Rule | validate_findings node/result missing or validation skip edge detected |
 | Confidence | 0.98 |
 
 ### 4.5 `parse_error_handling_score`
@@ -151,10 +151,26 @@
 | Detector Method | rag_mcp_presence() |
 | Trace Events Used | tool_end, final_output |
 | Trace Fields Used | tool_end.tool, final_output.content |
-| Implemented Failure Rule | retrieve_runbook 누락 또는 final report의 ## RAG Context 섹션 누락 |
+| Implemented Failure Rule | retrieve_runbook missing or ## RAG Context missing |
 | Confidence | 0.85/0.80 |
 
-### 4.7 `mcp_context_presence_and_usage`
+### 4.7 `instruction_adherence_score`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | High |
+| Actual Severity | high |
+| Measurement Method | LLM judge + rule |
+| Value Type | 0.0 ~ 1.0 |
+| Description | Agent가 주어진 instruction을 따른 정도. |
+| Detector Method | instruction_adherence() |
+| Trace Events Used | prompt_instruction_metrics |
+| Trace Fields Used | instruction_adherence.score, instruction_adherence.violations |
+| Implemented Failure Rule | score < 1.0 or violations present |
+| Confidence | 0.90 |
+
+### 4.8 `mcp_context_presence_and_usage`
 
 | 항목 | 내용 |
 | --- | --- |
@@ -167,10 +183,10 @@
 | Detector Method | rag_mcp_presence() |
 | Trace Events Used | mcp_end, final_output |
 | Trace Fields Used | mcp_end.method, final_output.content |
-| Implemented Failure Rule | mcp_end tools/call 누락 또는 final report의 ## MCP Context 섹션 누락 |
+| Implemented Failure Rule | mcp tools/call missing or ## MCP Context missing |
 | Confidence | 0.85/0.80 |
 
-### 4.8 `chat_context_grounding`
+### 4.9 `chat_context_grounding`
 
 | 항목 | 내용 |
 | --- | --- |
@@ -183,8 +199,40 @@
 | Detector Method | chat_context() |
 | Trace Events Used | chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated |
 | Trace Fields Used | chat_context_built.has_last_analysis |
-| Implemented Failure Rule | 후속 대화가 last analysis/context evidence에 grounded 되지 않음 |
+| Implemented Failure Rule | follow-up response not grounded in last analysis/context evidence |
 | Confidence | 0.82/0.70 |
+
+### 4.10 `output_format_compliance`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | Medium |
+| Actual Severity | medium |
+| Measurement Method | deterministic parser |
+| Value Type | pass/fail |
+| Description | 요구된 output format을 지켰는지. |
+| Detector Method | output_format_compliance() |
+| Trace Events Used | prompt_instruction_metrics, final_output fallback |
+| Trace Fields Used | output_format.compliant, output_format.missing_sections |
+| Implemented Failure Rule | required output format is not compliant |
+| Confidence | 0.92 |
+
+### 4.11 `prompt_template_version_present`
+
+| 항목 | 내용 |
+| --- | --- |
+| Category | Prompt / Instruction |
+| Registry Severity | Low |
+| Actual Severity | low |
+| Measurement Method | trace 검사 |
+| Value Type | 존재 여부 |
+| Description | trace에 prompt template 이름/version이 기록되어 있는지. |
+| Detector Method | prompt_template_version() |
+| Trace Events Used | instruction_snapshot, prompt_instruction_metrics |
+| Trace Fields Used | prompt_template.name, prompt_template.version, prompt_template.present |
+| Implemented Failure Rule | prompt template name/version missing |
+| Confidence | 0.90 |
 
 ## 5. Score / Gate 계산
 

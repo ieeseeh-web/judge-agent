@@ -26,6 +26,9 @@ class ReferenceWebLogDetector:
     def detect(self, run: SimpleAgentRun) -> List[Finding]:
         findings: List[Finding] = []
         checks = [
+            self.prompt_template_version,
+            self.output_format_compliance,
+            self.instruction_adherence,
             self.output_contract,
             self.validation_path,
             self.wrong_endpoint,
@@ -37,6 +40,78 @@ class ReferenceWebLogDetector:
         for check in checks:
             findings.extend(check(run, len(findings) + 1))
         return [Finding(id=f"JD-{i:03d}", category=f.category, metric=f.metric, severity=f.severity, confidence=f.confidence, evidence=f.evidence, expected=f.expected, actual=f.actual, recommendation=f.recommendation, location=f.location) for i, f in enumerate(findings, start=1)]
+
+
+    def _prompt_instruction_metrics_event(self, run: SimpleAgentRun) -> Optional[Dict[str, Any]]:
+        events = run.raw_by_type("prompt_instruction_metrics")
+        return events[-1] if events else None
+
+    def prompt_template_version(self, run: SimpleAgentRun, start: int) -> List[Finding]:
+        event = self._prompt_instruction_metrics_event(run)
+        prompt_template = (event or {}).get("prompt_template") or {}
+        name = prompt_template.get("name") or run.instructions.get("promptTemplateName")
+        version = prompt_template.get("version") or run.instructions.get("promptTemplateVersion")
+        present = prompt_template.get("present")
+        if present is None:
+            present = bool(name and version)
+        if present and name and version:
+            return []
+        return [_new_finding(
+            start,
+            category="prompt",
+            metric="prompt_template_version_present",
+            severity="low",
+            confidence=0.9,
+            evidence=[f"prompt_template_name={name}", f"prompt_template_version={version}", f"prompt_template_present={present}"],
+            expected="Trace should include prompt template name and version for regression tracking.",
+            actual="Prompt template name/version metadata was missing from the trace.",
+            recommendation="Emit prompt_template_name and prompt_template_version in instruction_snapshot and prompt_instruction_metrics events.",
+            location={"eventType": "prompt_instruction_metrics"},
+        )]
+
+    def output_format_compliance(self, run: SimpleAgentRun, start: int) -> List[Finding]:
+        event = self._prompt_instruction_metrics_event(run)
+        output_format = (event or {}).get("output_format") or {}
+        if not output_format and run.final_output is not None:
+            missing = [section for section in REQUIRED_SECTIONS if f"## {section}" not in (run.final_output or "")]
+            output_format = {"missing_sections": missing, "compliant": not missing}
+        if output_format.get("compliant", True):
+            return []
+        missing = output_format.get("missing_sections") or []
+        return [_new_finding(
+            start,
+            category="prompt",
+            metric="output_format_compliance",
+            severity="medium",
+            confidence=0.92,
+            evidence=[f"missing_sections={missing}", f"contract={output_format.get('contract', 'markdown_sections')}"],
+            expected="Final output should comply with the required output format captured by the reference agent.",
+            actual="Reference agent reported output format non-compliance.",
+            recommendation="Validate required output format before finish/final_output and regenerate or block invalid reports.",
+            location={"eventType": "prompt_instruction_metrics"},
+        )]
+
+    def instruction_adherence(self, run: SimpleAgentRun, start: int) -> List[Finding]:
+        event = self._prompt_instruction_metrics_event(run)
+        if not event:
+            return []
+        adherence = event.get("instruction_adherence") or {}
+        score = float(adherence.get("score", 1.0))
+        violations = adherence.get("violations") or []
+        if score >= 1.0 and not violations:
+            return []
+        return [_new_finding(
+            start,
+            category="prompt",
+            metric="instruction_adherence_score",
+            severity="high",
+            confidence=0.9,
+            evidence=[f"instruction_adherence_score={score}", f"violations={violations}"],
+            expected="Instruction adherence score should remain 1.0 with no collected violations.",
+            actual="Reference agent collected prompt/instruction adherence violations.",
+            recommendation="Enforce tool policy, output contract, and validation checks before final answer generation.",
+            location={"eventType": "prompt_instruction_metrics"},
+        )]
 
     def output_contract(self, run: SimpleAgentRun, start: int) -> List[Finding]:
         final = run.final_output or ""

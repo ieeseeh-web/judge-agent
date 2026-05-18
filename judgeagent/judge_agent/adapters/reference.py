@@ -64,10 +64,18 @@ class ReferenceAgentJsonlAdapter:
             run.user_input = raw.get("user_input")
         elif event_type == "instruction_snapshot":
             run.instructions = {
+                "promptTemplateName": raw.get("prompt_template_name"),
+                "promptTemplateVersion": raw.get("prompt_template_version"),
                 "system": raw.get("system"),
                 "reactProtocol": raw.get("react_protocol"),
                 "toolPolicy": raw.get("tool_policy"),
                 "outputContract": raw.get("output_contract"),
+            }
+        elif event_type == "prompt_instruction_metrics":
+            run.metadata["prompt_instruction_metrics"] = {
+                "promptTemplate": raw.get("prompt_template"),
+                "outputFormat": raw.get("output_format"),
+                "instructionAdherence": raw.get("instruction_adherence"),
             }
         elif event_type == "agent_components":
             run.components = {
@@ -101,6 +109,8 @@ class ReferenceAgentJsonlAdapter:
             return SimpleEvent(event_id, "react", raw.get("action"), ts, raw.get("action_input"), raw.get("observation"), raw)
         if event_type == "validation_result":
             return SimpleEvent(event_id, "validation", "validation_result", ts, raw.get("checks"), {"passed": raw.get("passed"), "issues": raw.get("issues")}, raw)
+        if event_type == "prompt_instruction_metrics":
+            return SimpleEvent(event_id, "prompt_instruction", "prompt_instruction_metrics", ts, raw.get("prompt_template"), {"output_format": raw.get("output_format"), "instruction_adherence": raw.get("instruction_adherence")}, raw)
         if event_type and event_type.startswith("chat_"):
             return SimpleEvent(event_id, "chat_turn", event_type, ts, raw.get("user_input"), raw.get("response"), raw)
         if event_type == "final_output":

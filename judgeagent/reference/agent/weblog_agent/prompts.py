@@ -1,3 +1,6 @@
+PROMPT_TEMPLATE_NAME = "weblog-react-agent-prompt"
+PROMPT_TEMPLATE_VERSION = "0.3.0"
+
 SYSTEM_PROMPT = """You are a production-grade Web Log Analysis ReAct agent.
 
 You run as a LangChain/LangGraph-style agent with these components:

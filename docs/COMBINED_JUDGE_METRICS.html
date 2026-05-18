@@ -1,36 +1,10 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Judge Metrics 통합 지표표</title>
-  <style>
-    :root { color-scheme: light dark; --bg:#fff; --fg:#172033; --muted:#64748b; --card:#f8fafc; --line:#e2e8f0; --accent:#2563eb; --code:#0f172a; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#172033; --line:#334155; --accent:#60a5fa; --code:#f8fafc; } }
-    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; line-height:1.62; }
-    main { max-width:1280px; margin:0 auto; padding:40px 20px 88px; }
-    h1 { font-size:2rem; margin:.2rem 0 1rem; }
-    h2 { margin-top:2.2rem; padding-top:.9rem; border-top:1px solid var(--line); }
-    h3 { margin-top:1.5rem; }
-    blockquote { margin:1rem 0; padding:12px 16px; border-left:4px solid var(--accent); background:var(--card); border-radius:8px; color:var(--muted); }
-    code { color:var(--code); background:var(--card); padding:.12rem .36rem; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
-    pre { overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-    pre code { background:transparent; padding:0; }
-    table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:.9rem; }
-    th, td { border:1px solid var(--line); padding:.55rem .65rem; text-align:left; vertical-align:top; }
-    th { background:var(--card); position:sticky; top:0; }
-    ul, ol { padding-left:1.35rem; }
-  </style>
-</head>
-<body>
-<main>
-<h1>Judge Metrics 통합 지표표</h1>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Judge Metrics 통합 지표표</title><style>:root{--bg:#fff;--fg:#172033;--muted:#64748b;--card:#f8fafc;--line:#e2e8f0;--accent:#2563eb;--code:#0f172a}@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--fg:#e2e8f0;--muted:#94a3b8;--card:#172033;--line:#334155;--accent:#60a5fa;--code:#f8fafc}}body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif;line-height:1.62}main{max-width:1280px;margin:0 auto;padding:40px 20px 88px}h2{margin-top:2.2rem;padding-top:.9rem;border-top:1px solid var(--line)}blockquote{margin:1rem 0;padding:12px 16px;border-left:4px solid var(--accent);background:var(--card);border-radius:8px;color:var(--muted)}code{color:var(--code);background:var(--card);padding:.12rem .36rem;border-radius:6px}pre{overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}pre code{background:transparent;padding:0}table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem}th,td{border:1px solid var(--line);padding:.55rem .65rem;text-align:left;vertical-align:top}th{background:var(--card)}</style></head><body><main><h1>Judge Metrics 통합 지표표</h1>
 <blockquote>기준: <code>judgeagent/judge_agent/config/metrics.json</code>의 전체 계획 지표와 <code>ReferenceWebLogDetector</code>에서 실제 <code>Finding.metric</code>으로 생성되는 구현 지표를 합쳐 정리했습니다.</blockquote>
 <h2>1. 요약</h2>
 <ul>
 <li>전체 계획/후보 지표: <strong>36개</strong></li>
-<li>실제 구현 지표: <strong>8개</strong></li>
-<li>미구현/계획 지표: <strong>28개</strong></li>
+<li>실제 구현 지표: <strong>11개</strong></li>
+<li>미구현/계획 지표: <strong>25개</strong></li>
 </ul>
 <h2>2. 상태 정의</h2>
 <table><thead><tr><th>Status</th><th>의미</th></tr></thead><tbody>
@@ -39,21 +13,21 @@
 </tbody></table>
 <h2>3. 통합 지표표</h2>
 <table><thead><tr><th>No</th><th>Metric</th><th>Implementation Status</th><th>Category</th><th>Registry Severity</th><th>Actual Severity</th><th>Measurement Method</th><th>Value Type</th><th>Description</th><th>Detector Method</th><th>Trace Events Used</th><th>Implemented Failure Rule</th><th>MVP Priority</th><th>Reference Agent Priority</th></tr></thead><tbody>
-<tr><td>1</td><td>output_contract_compliance</td><td>Implemented</td><td>Prompt / Instruction</td><td>High</td><td>critical/high</td><td>deterministic parser</td><td>pass/fail</td><td>final output이 markdown contract를 만족하는지.</td><td>output_contract()</td><td>final_output</td><td>final_output 누락/공백 또는 필수 Markdown 섹션 누락</td><td>-</td><td>1</td></tr>
+<tr><td>1</td><td>output_contract_compliance</td><td>Implemented</td><td>Prompt / Instruction</td><td>High</td><td>critical/high</td><td>deterministic parser</td><td>pass/fail</td><td>final output이 markdown contract를 만족하는지.</td><td>output_contract()</td><td>final_output</td><td>final_output missing/empty or required markdown sections missing</td><td>-</td><td>1</td></tr>
 <tr><td>2</td><td>tool_argument_correctness</td><td>Planned</td><td>Tool Use</td><td>High</td><td>-</td><td>rule (schema + context)</td><td>0.0 ~ 1.0</td><td>tool argument가 schema와 context를 만족하는지.</td><td>-</td><td>-</td><td>-</td><td>1</td><td>-</td></tr>
-<tr><td>3</td><td>target_endpoint_consistency</td><td>Implemented</td><td>Tool Use</td><td>High</td><td>high</td><td>rule (context)</td><td>pass/fail</td><td>사용자 요청 target endpoint와 tool/metric path가 일치하는지.</td><td>wrong_endpoint()</td><td>run_start/chat_turn_start, tool_start, tool_end</td><td>사용자 요청 target path와 tool argument/metric path 불일치</td><td>-</td><td>2</td></tr>
+<tr><td>3</td><td>target_endpoint_consistency</td><td>Implemented</td><td>Tool Use</td><td>High</td><td>high</td><td>rule (context)</td><td>pass/fail</td><td>사용자 요청 target endpoint와 tool/metric path가 일치하는지.</td><td>wrong_endpoint()</td><td>run_start/chat_turn_start, tool_start, tool_end</td><td>tool argument or metric path differs from user target path</td><td>-</td><td>2</td></tr>
 <tr><td>4</td><td>tool_error_handling_score</td><td>Planned</td><td>Tool Use</td><td>Critical</td><td>-</td><td>rule</td><td>0.0 ~ 1.0</td><td>tool error를 적절히 처리했는지.</td><td>-</td><td>-</td><td>-</td><td>2</td><td>-</td></tr>
 <tr><td>5</td><td>answer_context_groundedness</td><td>Planned</td><td>Context / Retrieval</td><td>High</td><td>-</td><td>LLM judge</td><td>0.0 ~ 1.0</td><td>final output이 retrieved context에 근거하는지.</td><td>-</td><td>-</td><td>-</td><td>3</td><td>-</td></tr>
-<tr><td>6</td><td>metric_result_consistency</td><td>Implemented</td><td>Final Output / Completion</td><td>High</td><td>high</td><td>rule (tool output)</td><td>pass/fail</td><td>metric claim이 검증 가능한 tool output에서 왔는지.</td><td>metric_consistency()</td><td>react_step, tool_end, node_start, node_end</td><td>compute step은 있으나 compute_log_metrics tool_end가 없거나, faultInjected metrics 사용</td><td>-</td><td>3</td></tr>
+<tr><td>6</td><td>metric_result_consistency</td><td>Implemented</td><td>Final Output / Completion</td><td>High</td><td>high</td><td>rule (tool output)</td><td>pass/fail</td><td>metric claim이 검증 가능한 tool output에서 왔는지.</td><td>metric_consistency()</td><td>react_step, tool_end, node_start, node_end</td><td>compute step without compute_log_metrics result or faultInjected metrics</td><td>-</td><td>3</td></tr>
 <tr><td>7</td><td>node_sequence_correctness</td><td>Planned</td><td>LangGraph Flow</td><td>Critical</td><td>-</td><td>rule (expected path)</td><td>0.0 ~ 1.0</td><td>실행된 node 순서가 기대 workflow와 맞는지.</td><td>-</td><td>-</td><td>-</td><td>4</td><td>-</td></tr>
-<tr><td>8</td><td>validation_path_coverage</td><td>Implemented</td><td>LangGraph Flow</td><td>Critical</td><td>critical</td><td>rule (expected path)</td><td>pass/fail</td><td>validate_findings node와 validation_result가 실행되었는지.</td><td>validation_path()</td><td>node_start, validation_result, edge_selected</td><td>validate_findings node/result 누락 또는 validation skip edge 감지</td><td>-</td><td>4</td></tr>
+<tr><td>8</td><td>validation_path_coverage</td><td>Implemented</td><td>LangGraph Flow</td><td>Critical</td><td>critical</td><td>rule (expected path)</td><td>pass/fail</td><td>validate_findings node와 validation_result가 실행되었는지.</td><td>validation_path()</td><td>node_start, validation_result, edge_selected</td><td>validate_findings node/result missing or validation skip edge detected</td><td>-</td><td>4</td></tr>
 <tr><td>9</td><td>verification_coverage</td><td>Planned</td><td>Final Output / Completion</td><td>High</td><td>-</td><td>rule</td><td>0.0 ~ 1.0</td><td>완료 전 필요한 검증을 수행했는지.</td><td>-</td><td>-</td><td>-</td><td>5</td><td>-</td></tr>
 <tr><td>10</td><td>parse_error_handling_score</td><td>Implemented</td><td>Tool Use</td><td>High</td><td>high</td><td>rule</td><td>0.0 ~ 1.0</td><td>높은 parse error ratio를 차단/반영했는지.</td><td>parse_error_handling()</td><td>tool_end(parse_access_log), final_output, validation_result</td><td>parse_error_count / total_lines &gt; 0.5</td><td>-</td><td>5</td></tr>
-<tr><td>11</td><td>rag_context_presence_and_usage</td><td>Implemented</td><td>Context / Retrieval</td><td>Medium</td><td>medium</td><td>rule</td><td>pass/fail</td><td>RAG retrieval과 final report 반영 여부.</td><td>rag_mcp_presence()</td><td>tool_end, final_output</td><td>retrieve_runbook 누락 또는 final report의 ## RAG Context 섹션 누락</td><td>-</td><td>6</td></tr>
-<tr><td>12</td><td>instruction_adherence_score</td><td>Planned</td><td>Prompt / Instruction</td><td>High</td><td>-</td><td>LLM judge + rule</td><td>0.0 ~ 1.0</td><td>Agent가 주어진 instruction을 따른 정도.</td><td>-</td><td>-</td><td>-</td><td>6</td><td>-</td></tr>
-<tr><td>13</td><td>mcp_context_presence_and_usage</td><td>Implemented</td><td>ReAct / RAG / MCP</td><td>Medium</td><td>medium</td><td>rule</td><td>pass/fail</td><td>MCP service context 수집과 final report 반영 여부.</td><td>rag_mcp_presence()</td><td>mcp_end, final_output</td><td>mcp_end tools/call 누락 또는 final report의 ## MCP Context 섹션 누락</td><td>-</td><td>7</td></tr>
+<tr><td>11</td><td>rag_context_presence_and_usage</td><td>Implemented</td><td>Context / Retrieval</td><td>Medium</td><td>medium</td><td>rule</td><td>pass/fail</td><td>RAG retrieval과 final report 반영 여부.</td><td>rag_mcp_presence()</td><td>tool_end, final_output</td><td>retrieve_runbook missing or ## RAG Context missing</td><td>-</td><td>6</td></tr>
+<tr><td>12</td><td>instruction_adherence_score</td><td>Implemented</td><td>Prompt / Instruction</td><td>High</td><td>high</td><td>LLM judge + rule</td><td>0.0 ~ 1.0</td><td>Agent가 주어진 instruction을 따른 정도.</td><td>instruction_adherence()</td><td>prompt_instruction_metrics</td><td>score &lt; 1.0 or violations present</td><td>6</td><td>-</td></tr>
+<tr><td>13</td><td>mcp_context_presence_and_usage</td><td>Implemented</td><td>ReAct / RAG / MCP</td><td>Medium</td><td>medium</td><td>rule</td><td>pass/fail</td><td>MCP service context 수집과 final report 반영 여부.</td><td>rag_mcp_presence()</td><td>mcp_end, final_output</td><td>mcp tools/call missing or ## MCP Context missing</td><td>-</td><td>7</td></tr>
 <tr><td>14</td><td>redundant_tool_call_count</td><td>Planned</td><td>Tool Use</td><td>Medium</td><td>-</td><td>rule (중복 탐지)</td><td>count (정수)</td><td>같은 목적의 중복 tool 호출 횟수.</td><td>-</td><td>-</td><td>-</td><td>7</td><td>-</td></tr>
-<tr><td>15</td><td>chat_context_grounding</td><td>Implemented</td><td>Context / Retrieval</td><td>Medium</td><td>medium/low</td><td>rule</td><td>pass/fail</td><td>후속 대화가 직전 analysis/focus/evidence에 grounded 되었는지.</td><td>chat_context()</td><td>chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated</td><td>후속 대화가 last analysis/context evidence에 grounded 되지 않음</td><td>-</td><td>8</td></tr>
+<tr><td>15</td><td>chat_context_grounding</td><td>Implemented</td><td>Context / Retrieval</td><td>Medium</td><td>medium/low</td><td>rule</td><td>pass/fail</td><td>후속 대화가 직전 analysis/focus/evidence에 grounded 되었는지.</td><td>chat_context()</td><td>chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated</td><td>follow-up response not grounded in last analysis/context evidence</td><td>-</td><td>8</td></tr>
 <tr><td>16</td><td>missing_required_context</td><td>Planned</td><td>Context / Retrieval</td><td>High</td><td>-</td><td>reference fixture / LLM judge</td><td>0.0 ~ 1.0</td><td>답변에 필요한 context가 검색되지 않았는지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 <tr><td>17</td><td>retrieval_context_precision</td><td>Planned</td><td>Context / Retrieval</td><td>Medium</td><td>-</td><td>rule (비율)</td><td>0.0 ~ 1.0</td><td>retrieved chunk 중 관련 있는 chunk의 비율.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 <tr><td>18</td><td>retrieval_context_relevance</td><td>Planned</td><td>Context / Retrieval</td><td>Medium</td><td>-</td><td>LLM judge / embedding sim</td><td>0.0 ~ 1.0</td><td>retriever가 가져온 document/chunk가 user input과 관련 있는지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
@@ -68,8 +42,8 @@
 <tr><td>27</td><td>memory_update_correctness</td><td>Planned</td><td>Memory / State</td><td>Medium</td><td>-</td><td>rule</td><td>pass/fail</td><td>저장해야 할 memory를 저장했고, 저장하면 안 되는 내용을 저장하지 않았는지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 <tr><td>28</td><td>state_freshness_score</td><td>Planned</td><td>Memory / State</td><td>Medium</td><td>-</td><td>rule (timestamp/version)</td><td>0.0 ~ 1.0</td><td>LangGraph state/checkpoint가 최신인지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 <tr><td>29</td><td>state_value_grounding</td><td>Planned</td><td>Memory / State</td><td>High</td><td>-</td><td>rule (event 추적)</td><td>0.0 ~ 1.0</td><td>node가 사용한 state 값이 이전 event에서 생성/검증된 값인지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-<tr><td>30</td><td>output_format_compliance</td><td>Planned</td><td>Prompt / Instruction</td><td>Medium</td><td>-</td><td>deterministic parser</td><td>pass/fail</td><td>요구된 output format을 지켰는지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-<tr><td>31</td><td>prompt_template_version_present</td><td>Planned</td><td>Prompt / Instruction</td><td>Low</td><td>-</td><td>trace 검사</td><td>존재 여부</td><td>trace에 prompt template 이름/version이 기록되어 있는지.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>30</td><td>output_format_compliance</td><td>Implemented</td><td>Prompt / Instruction</td><td>Medium</td><td>medium</td><td>deterministic parser</td><td>pass/fail</td><td>요구된 output format을 지켰는지.</td><td>output_format_compliance()</td><td>prompt_instruction_metrics, final_output fallback</td><td>required output format is not compliant</td><td>-</td><td>-</td></tr>
+<tr><td>31</td><td>prompt_template_version_present</td><td>Implemented</td><td>Prompt / Instruction</td><td>Low</td><td>low</td><td>trace 검사</td><td>존재 여부</td><td>trace에 prompt template 이름/version이 기록되어 있는지.</td><td>prompt_template_version()</td><td>instruction_snapshot, prompt_instruction_metrics</td><td>prompt template name/version missing</td><td>-</td><td>-</td></tr>
 <tr><td>32</td><td>action_grounding_score</td><td>Planned</td><td>ReAct / RAG / MCP</td><td>High</td><td>-</td><td>rule + LLM judge</td><td>0.0 ~ 1.0</td><td>action argument가 user input/state/observation에서 근거를 갖는가.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 <tr><td>33</td><td>observation_utilization_score</td><td>Planned</td><td>ReAct / RAG / MCP</td><td>Medium</td><td>-</td><td>LLM judge</td><td>0.0 ~ 1.0</td><td>tool observation이 다음 reasoning/final report에 반영되는가.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 <tr><td>34</td><td>react_step_completeness</td><td>Planned</td><td>ReAct / RAG / MCP</td><td>High</td><td>-</td><td>rule + LLM judge</td><td>0.0 ~ 1.0</td><td>Thought/Action/Observation sequence가 완전한가.</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
@@ -88,7 +62,7 @@
 <tr><td>Detector Method</td><td>output_contract()</td></tr>
 <tr><td>Trace Events Used</td><td>final_output</td></tr>
 <tr><td>Trace Fields Used</td><td>final_output.content</td></tr>
-<tr><td>Implemented Failure Rule</td><td>final_output 누락/공백 또는 필수 Markdown 섹션 누락</td></tr>
+<tr><td>Implemented Failure Rule</td><td>final_output missing/empty or required markdown sections missing</td></tr>
 <tr><td>Confidence</td><td>0.95</td></tr>
 </tbody></table>
 <h3>4.2 <code>target_endpoint_consistency</code></h3>
@@ -102,7 +76,7 @@
 <tr><td>Detector Method</td><td>wrong_endpoint()</td></tr>
 <tr><td>Trace Events Used</td><td>run_start/chat_turn_start, tool_start, tool_end</td></tr>
 <tr><td>Trace Fields Used</td><td>user_input, filter_log_records.path_pattern, compute_log_metrics.top_paths[].path</td></tr>
-<tr><td>Implemented Failure Rule</td><td>사용자 요청 target path와 tool argument/metric path 불일치</td></tr>
+<tr><td>Implemented Failure Rule</td><td>tool argument or metric path differs from user target path</td></tr>
 <tr><td>Confidence</td><td>0.96</td></tr>
 </tbody></table>
 <h3>4.3 <code>metric_result_consistency</code></h3>
@@ -116,7 +90,7 @@
 <tr><td>Detector Method</td><td>metric_consistency()</td></tr>
 <tr><td>Trace Events Used</td><td>react_step, tool_end, node_start, node_end</td></tr>
 <tr><td>Trace Fields Used</td><td>react_step.action, tool_end.tool, state.metrics.faultInjected</td></tr>
-<tr><td>Implemented Failure Rule</td><td>compute step은 있으나 compute_log_metrics tool_end가 없거나, faultInjected metrics 사용</td></tr>
+<tr><td>Implemented Failure Rule</td><td>compute step without compute_log_metrics result or faultInjected metrics</td></tr>
 <tr><td>Confidence</td><td>0.90/0.98</td></tr>
 </tbody></table>
 <h3>4.4 <code>validation_path_coverage</code></h3>
@@ -130,7 +104,7 @@
 <tr><td>Detector Method</td><td>validation_path()</td></tr>
 <tr><td>Trace Events Used</td><td>node_start, validation_result, edge_selected</td></tr>
 <tr><td>Trace Fields Used</td><td>node_start.node, validation_result count, edge_selected.reason</td></tr>
-<tr><td>Implemented Failure Rule</td><td>validate_findings node/result 누락 또는 validation skip edge 감지</td></tr>
+<tr><td>Implemented Failure Rule</td><td>validate_findings node/result missing or validation skip edge detected</td></tr>
 <tr><td>Confidence</td><td>0.98</td></tr>
 </tbody></table>
 <h3>4.5 <code>parse_error_handling_score</code></h3>
@@ -158,10 +132,24 @@
 <tr><td>Detector Method</td><td>rag_mcp_presence()</td></tr>
 <tr><td>Trace Events Used</td><td>tool_end, final_output</td></tr>
 <tr><td>Trace Fields Used</td><td>tool_end.tool, final_output.content</td></tr>
-<tr><td>Implemented Failure Rule</td><td>retrieve_runbook 누락 또는 final report의 ## RAG Context 섹션 누락</td></tr>
+<tr><td>Implemented Failure Rule</td><td>retrieve_runbook missing or ## RAG Context missing</td></tr>
 <tr><td>Confidence</td><td>0.85/0.80</td></tr>
 </tbody></table>
-<h3>4.7 <code>mcp_context_presence_and_usage</code></h3>
+<h3>4.7 <code>instruction_adherence_score</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>High</td></tr>
+<tr><td>Actual Severity</td><td>high</td></tr>
+<tr><td>Measurement Method</td><td>LLM judge + rule</td></tr>
+<tr><td>Value Type</td><td>0.0 ~ 1.0</td></tr>
+<tr><td>Description</td><td>Agent가 주어진 instruction을 따른 정도.</td></tr>
+<tr><td>Detector Method</td><td>instruction_adherence()</td></tr>
+<tr><td>Trace Events Used</td><td>prompt_instruction_metrics</td></tr>
+<tr><td>Trace Fields Used</td><td>instruction_adherence.score, instruction_adherence.violations</td></tr>
+<tr><td>Implemented Failure Rule</td><td>score &lt; 1.0 or violations present</td></tr>
+<tr><td>Confidence</td><td>0.90</td></tr>
+</tbody></table>
+<h3>4.8 <code>mcp_context_presence_and_usage</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
 <tr><td>Category</td><td>ReAct / RAG / MCP</td></tr>
 <tr><td>Registry Severity</td><td>Medium</td></tr>
@@ -172,10 +160,10 @@
 <tr><td>Detector Method</td><td>rag_mcp_presence()</td></tr>
 <tr><td>Trace Events Used</td><td>mcp_end, final_output</td></tr>
 <tr><td>Trace Fields Used</td><td>mcp_end.method, final_output.content</td></tr>
-<tr><td>Implemented Failure Rule</td><td>mcp_end tools/call 누락 또는 final report의 ## MCP Context 섹션 누락</td></tr>
+<tr><td>Implemented Failure Rule</td><td>mcp tools/call missing or ## MCP Context missing</td></tr>
 <tr><td>Confidence</td><td>0.85/0.80</td></tr>
 </tbody></table>
-<h3>4.8 <code>chat_context_grounding</code></h3>
+<h3>4.9 <code>chat_context_grounding</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
 <tr><td>Category</td><td>Context / Retrieval</td></tr>
 <tr><td>Registry Severity</td><td>Medium</td></tr>
@@ -186,8 +174,36 @@
 <tr><td>Detector Method</td><td>chat_context()</td></tr>
 <tr><td>Trace Events Used</td><td>chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated</td></tr>
 <tr><td>Trace Fields Used</td><td>chat_context_built.has_last_analysis</td></tr>
-<tr><td>Implemented Failure Rule</td><td>후속 대화가 last analysis/context evidence에 grounded 되지 않음</td></tr>
+<tr><td>Implemented Failure Rule</td><td>follow-up response not grounded in last analysis/context evidence</td></tr>
 <tr><td>Confidence</td><td>0.82/0.70</td></tr>
+</tbody></table>
+<h3>4.10 <code>output_format_compliance</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>Medium</td></tr>
+<tr><td>Actual Severity</td><td>medium</td></tr>
+<tr><td>Measurement Method</td><td>deterministic parser</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>요구된 output format을 지켰는지.</td></tr>
+<tr><td>Detector Method</td><td>output_format_compliance()</td></tr>
+<tr><td>Trace Events Used</td><td>prompt_instruction_metrics, final_output fallback</td></tr>
+<tr><td>Trace Fields Used</td><td>output_format.compliant, output_format.missing_sections</td></tr>
+<tr><td>Implemented Failure Rule</td><td>required output format is not compliant</td></tr>
+<tr><td>Confidence</td><td>0.92</td></tr>
+</tbody></table>
+<h3>4.11 <code>prompt_template_version_present</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>Low</td></tr>
+<tr><td>Actual Severity</td><td>low</td></tr>
+<tr><td>Measurement Method</td><td>trace 검사</td></tr>
+<tr><td>Value Type</td><td>존재 여부</td></tr>
+<tr><td>Description</td><td>trace에 prompt template 이름/version이 기록되어 있는지.</td></tr>
+<tr><td>Detector Method</td><td>prompt_template_version()</td></tr>
+<tr><td>Trace Events Used</td><td>instruction_snapshot, prompt_instruction_metrics</td></tr>
+<tr><td>Trace Fields Used</td><td>prompt_template.name, prompt_template.version, prompt_template.present</td></tr>
+<tr><td>Implemented Failure Rule</td><td>prompt template name/version missing</td></tr>
+<tr><td>Confidence</td><td>0.90</td></tr>
 </tbody></table>
 <h2>5. Score / Gate 계산</h2>
 <p>실제 구현에서는 metric별 numeric score를 별도로 계산하지 않고, 생성된 finding들의 severity penalty 합으로 run score와 gate를 계산합니다.</p>
@@ -217,7 +233,4 @@
 <tr><td>detector 설정</td><td><code>judgeagent/judge_agent/config/detector_rules.json</code></td></tr>
 <tr><td>trace adapter</td><td><code>judgeagent/judge_agent/adapters/reference.py</code></td></tr>
 <tr><td>analyzer entrypoint</td><td><code>judgeagent/judge_agent/analysis/analyzer.py</code></td></tr>
-</tbody></table>
-</main>
-</body>
-</html>
+</tbody></table></main></body></html>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -21,7 +22,14 @@ class StdioMCPClient:
     """
 
     def __init__(self, command: Optional[List[str]] = None):
-        self.command = command or [sys.executable, "-m", "reference_agent.weblog_agent.mcp_server"]
+        module = "reference_agent.weblog_agent.mcp_server"
+        try:
+            available = importlib.util.find_spec(module) is not None
+        except ModuleNotFoundError:
+            available = False
+        if not available:
+            module = "judgeagent.reference.agent.weblog_agent.mcp_server"
+        self.command = command or [sys.executable, "-m", module]
         self._proc: Optional[subprocess.Popen[str]] = None
         self._next_id = 1
         self._lock = threading.Lock()

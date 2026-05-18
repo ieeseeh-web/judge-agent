@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from . import tools
 from .llm import LLMClient, parse_json_object
 from .mcp import StdioMCPClient
-from .prompts import OUTPUT_CONTRACT, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY
+from .prompts import OUTPUT_CONTRACT, PROMPT_TEMPLATE_NAME, PROMPT_TEMPLATE_VERSION, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY
 from .rag import LocalRunbookRetriever
 from .reporting import build_report
 from .state import WebLogAnalysisState
@@ -77,7 +77,15 @@ class WebLogAnalysisAgent:
             llm_model=self.llm.config.model,
             llm_config=self.llm.config.sanitized(),
         )
-        self.trace.emit("instruction_snapshot", system=SYSTEM_PROMPT, react_protocol=REACT_PROTOCOL, tool_policy=TOOL_POLICY, output_contract=OUTPUT_CONTRACT)
+        self.trace.emit(
+            "instruction_snapshot",
+            prompt_template_name=PROMPT_TEMPLATE_NAME,
+            prompt_template_version=PROMPT_TEMPLATE_VERSION,
+            system=SYSTEM_PROMPT,
+            react_protocol=REACT_PROTOCOL,
+            tool_policy=TOOL_POLICY,
+            output_contract=OUTPUT_CONTRACT,
+        )
         try:
             self._node("initialize_agent", state, self.initialize_agent)
             self._edge("initialize_agent", "react_agent", "agent_initialized")
@@ -97,9 +105,65 @@ class WebLogAnalysisAgent:
             self._node("finalize", state, self.finalize)
         finally:
             self.close()
+        self._emit_prompt_instruction_metrics(state)
         self.trace.emit("final_output", content=state.finalReport or "")
         self.trace.emit("run_end", status="completed" if not state.errors else "completed_with_errors")
         return state
+
+    def _emit_prompt_instruction_metrics(self, state: WebLogAnalysisState) -> None:
+        """Emit prompt/instruction observability values for Judge Agent.
+
+        These values intentionally live in the reference-agent trace. The Judge
+        Agent should verify the runtime-collected prompt metadata, output-format
+        check, and instruction-adherence check.
+        """
+        final = state.finalReport or ""
+        required_sections = [
+            line.removeprefix("## ").strip()
+            for line in OUTPUT_CONTRACT.splitlines()
+            if line.startswith("## ")
+        ]
+        missing_sections = [section for section in required_sections if f"## {section}" not in final]
+        violations = []
+        if missing_sections:
+            violations.append({
+                "code": "missing_required_output_sections",
+                "detail": missing_sections,
+            })
+        if not state.metrics and final:
+            violations.append({
+                "code": "final_report_without_metrics",
+                "detail": "Final report exists but metrics state is empty.",
+            })
+        if state.validation and not state.validation.get("passed"):
+            violations.append({
+                "code": "validation_issues_present",
+                "detail": state.validation.get("issues", []),
+            })
+        score = max(0.0, 1.0 - (0.25 * len(violations)))
+        self.trace.emit(
+            "prompt_instruction_metrics",
+            prompt_template={
+                "name": PROMPT_TEMPLATE_NAME,
+                "version": PROMPT_TEMPLATE_VERSION,
+                "present": bool(PROMPT_TEMPLATE_NAME and PROMPT_TEMPLATE_VERSION),
+            },
+            output_format={
+                "contract": "markdown_sections",
+                "required_sections": required_sections,
+                "missing_sections": missing_sections,
+                "compliant": not missing_sections,
+            },
+            instruction_adherence={
+                "score": score,
+                "violations": violations,
+                "checks": [
+                    "required_output_sections",
+                    "metrics_available_for_final_report",
+                    "validation_passed",
+                ],
+            },
+        )
 
     def _edge(self, frm: str, to: str, reason: str):
         self.trace.emit("edge_selected", **{"from": frm, "to": to, "reason": reason})

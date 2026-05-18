@@ -1,213 +1,174 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>실제 구현 기준 Judge Metrics 지표</title>
-  <style>
-    :root { color-scheme: light dark; --bg:#fff; --fg:#172033; --muted:#64748b; --card:#f8fafc; --line:#e2e8f0; --accent:#2563eb; --code:#0f172a; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#172033; --line:#334155; --accent:#60a5fa; --code:#f8fafc; } }
-    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; line-height:1.65; }
-    main { max-width:1100px; margin:0 auto; padding:40px 20px 88px; }
-    h1 { font-size:2rem; margin:.2rem 0 1rem; }
-    h2 { margin-top:2.2rem; padding-top:.9rem; border-top:1px solid var(--line); }
-    h3 { margin-top:1.6rem; }
-    blockquote { margin:1rem 0; padding:12px 16px; border-left:4px solid var(--accent); background:var(--card); border-radius:8px; color:var(--muted); }
-    code { color:var(--code); background:var(--card); padding:.12rem .36rem; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
-    pre { overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-    pre code { background:transparent; padding:0; }
-    table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:.93rem; }
-    th, td { border:1px solid var(--line); padding:.58rem .7rem; text-align:left; vertical-align:top; }
-    th { background:var(--card); }
-    ul, ol { padding-left:1.35rem; }
-  </style>
-</head>
-<body>
-<main>
-<h1>실제 구현 기준 Judge Metrics 지표</h1>
-<blockquote>기준: <code>judgeagent/judge_agent/analysis/detectors.py</code>에서 실제로 <code>Finding.metric</code>으로 생성되는 지표만 정리합니다.<br /><code>docs/DRIFT_METRICS.xlsx</code>와 <code>judgeagent/judge_agent/config/metrics.json</code>에는 설계/후보 지표가 더 많이 포함되어 있지만, 이 문서는 현재 코드가 실제 trace 값을 읽어 판단하는 구현 지표만 다룹니다.</blockquote>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>실제 구현 기준 Judge Metrics 지표</title><style>:root{--bg:#fff;--fg:#172033;--muted:#64748b;--card:#f8fafc;--line:#e2e8f0;--accent:#2563eb;--code:#0f172a}@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--fg:#e2e8f0;--muted:#94a3b8;--card:#172033;--line:#334155;--accent:#60a5fa;--code:#f8fafc}}body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif;line-height:1.62}main{max-width:1280px;margin:0 auto;padding:40px 20px 88px}h2{margin-top:2.2rem;padding-top:.9rem;border-top:1px solid var(--line)}blockquote{margin:1rem 0;padding:12px 16px;border-left:4px solid var(--accent);background:var(--card);border-radius:8px;color:var(--muted)}code{color:var(--code);background:var(--card);padding:.12rem .36rem;border-radius:6px}pre{overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}pre code{background:transparent;padding:0}table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem}th,td{border:1px solid var(--line);padding:.55rem .65rem;text-align:left;vertical-align:top}th{background:var(--card)}</style></head><body><main><h1>실제 구현 기준 Judge Metrics 지표</h1>
+<blockquote>기준: <code>judgeagent/judge_agent/analysis/detectors.py</code>에서 실제로 <code>Finding.metric</code>으로 생성되는 지표만 정리합니다.</blockquote>
 <h2>1. 요약</h2>
-<p>현재 구현된 detector는 <code>ReferenceWebLogDetector</code> 하나이며, Reference Web Log Agent JSONL trace를 대상으로 다음 8개 metric을 실제 finding으로 생성합니다.</p>
+<p>현재 구현된 detector는 다음 <strong>11개</strong> metric을 실제 finding으로 생성합니다.</p>
 <table><thead><tr><th>No</th><th>구현 metric</th><th>기본 severity</th><th>판단 영역</th><th>detector method</th></tr></thead><tbody>
-<tr><td>1</td><td><code>output_contract_compliance</code></td><td>critical 또는 high</td><td>Final Output / Prompt Contract</td><td><code>output_contract()</code></td></tr>
-<tr><td>2</td><td><code>validation_path_coverage</code></td><td>critical</td><td>LangGraph Flow / Validation</td><td><code>validation_path()</code></td></tr>
-<tr><td>3</td><td><code>target_endpoint_consistency</code></td><td>high</td><td>Tool Use / Argument Grounding</td><td><code>wrong_endpoint()</code></td></tr>
-<tr><td>4</td><td><code>parse_error_handling_score</code></td><td>high</td><td>Tool Use / Error Handling</td><td><code>parse_error_handling()</code></td></tr>
-<tr><td>5</td><td><code>metric_result_consistency</code></td><td>high</td><td>Metric / Completion Consistency</td><td><code>metric_consistency()</code></td></tr>
-<tr><td>6</td><td><code>rag_context_presence_and_usage</code></td><td>medium</td><td>RAG Context</td><td><code>rag_mcp_presence()</code></td></tr>
-<tr><td>7</td><td><code>mcp_context_presence_and_usage</code></td><td>medium</td><td>MCP Context</td><td><code>rag_mcp_presence()</code></td></tr>
-<tr><td>8</td><td><code>chat_context_grounding</code></td><td>medium 또는 low</td><td>Conversational Context</td><td><code>chat_context()</code></td></tr>
+<tr><td>1</td><td><code>output_contract_compliance</code></td><td>critical/high</td><td>Prompt / Instruction</td><td><code>output_contract()</code></td></tr>
+<tr><td>2</td><td><code>target_endpoint_consistency</code></td><td>high</td><td>Tool Use</td><td><code>wrong_endpoint()</code></td></tr>
+<tr><td>3</td><td><code>metric_result_consistency</code></td><td>high</td><td>Final Output / Completion</td><td><code>metric_consistency()</code></td></tr>
+<tr><td>4</td><td><code>validation_path_coverage</code></td><td>critical</td><td>LangGraph Flow</td><td><code>validation_path()</code></td></tr>
+<tr><td>5</td><td><code>parse_error_handling_score</code></td><td>high</td><td>Tool Use</td><td><code>parse_error_handling()</code></td></tr>
+<tr><td>6</td><td><code>rag_context_presence_and_usage</code></td><td>medium</td><td>Context / Retrieval</td><td><code>rag_mcp_presence()</code></td></tr>
+<tr><td>7</td><td><code>instruction_adherence_score</code></td><td>high</td><td>Prompt / Instruction</td><td><code>instruction_adherence()</code></td></tr>
+<tr><td>8</td><td><code>mcp_context_presence_and_usage</code></td><td>medium</td><td>ReAct / RAG / MCP</td><td><code>rag_mcp_presence()</code></td></tr>
+<tr><td>9</td><td><code>chat_context_grounding</code></td><td>medium/low</td><td>Context / Retrieval</td><td><code>chat_context()</code></td></tr>
+<tr><td>10</td><td><code>output_format_compliance</code></td><td>medium</td><td>Prompt / Instruction</td><td><code>output_format_compliance()</code></td></tr>
+<tr><td>11</td><td><code>prompt_template_version_present</code></td><td>low</td><td>Prompt / Instruction</td><td><code>prompt_template_version()</code></td></tr>
 </tbody></table>
 <h2>2. 구현 기준 상세 지표</h2>
 <h3>2.1 <code>output_contract_compliance</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>최종 응답이 요구된 Markdown output contract를 지켰는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>final_output</code> event</td></tr>
-<tr><td>수집 필드</td><td><code>final_output.content</code>, 내부적으로 <code>run.final_output</code>에 저장</td></tr>
-<tr><td>설정값</td><td><code>detector_rules.json &gt; reference_weblog.required_output_sections</code></td></tr>
-<tr><td>필수 섹션</td><td><code>Summary</code>, <code>Key Metrics</code>, <code>Anomalies</code>, <code>Evidence</code>, <code>RAG Context</code>, <code>MCP Context</code>, <code>Recommended Actions</code>, <code>Confidence &amp; Limitations</code></td></tr>
-<tr><td>실패 조건 A</td><td><code>final_output</code>이 없거나 비어 있음</td></tr>
-<tr><td>실패 severity A</td><td><code>critical</code></td></tr>
-<tr><td>실패 조건 B</td><td>필수 <code>## section</code> 중 하나 이상 누락</td></tr>
-<tr><td>실패 severity B</td><td><code>high</code></td></tr>
-<tr><td>confidence</td><td><code>0.95</code></td></tr>
-<tr><td>대표 evidence</td><td><code>final_output event is missing or empty</code>, <code>Missing sections: ...</code></td></tr>
-<tr><td>권장 조치</td><td>finalization 전에 output contract validation을 수행하고, 누락 섹션이 있으면 완료를 막음</td></tr>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>High</td></tr>
+<tr><td>Actual Severity</td><td>critical/high</td></tr>
+<tr><td>Measurement Method</td><td>deterministic parser</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>final output이 markdown contract를 만족하는지.</td></tr>
+<tr><td>Detector Method</td><td>output_contract()</td></tr>
+<tr><td>Trace Events Used</td><td>final_output</td></tr>
+<tr><td>Trace Fields Used</td><td>final_output.content</td></tr>
+<tr><td>Implemented Failure Rule</td><td>final_output missing/empty or required markdown sections missing</td></tr>
+<tr><td>Confidence</td><td>0.95</td></tr>
 </tbody></table>
-<h3>2.2 <code>validation_path_coverage</code></h3>
+<h3>2.2 <code>target_endpoint_consistency</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>최종 산출 전 validation graph path가 실행되었는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>node_start</code>, <code>validation_result</code>, <code>edge_selected</code></td></tr>
-<tr><td>수집 필드</td><td><code>node_start.node</code>, <code>validation_result</code>, <code>edge_selected.reason</code></td></tr>
-<tr><td>설정값</td><td><code>expected_validation_node=validate_findings</code>, <code>validation_skip_reason=fault_validation_skipped</code></td></tr>
-<tr><td>통과 조건</td><td><code>validate_findings</code> node가 실행되고, <code>validation_result</code>가 있으며, validation skip edge가 없어야 함</td></tr>
-<tr><td>실패 조건</td><td>validation node 누락, validation result 누락, 또는 skip reason 감지</td></tr>
-<tr><td>실패 severity</td><td><code>critical</code></td></tr>
-<tr><td>confidence</td><td><code>0.98</code></td></tr>
-<tr><td>대표 evidence</td><td><code>node_start sequence=[...]</code>, <code>validation_result_count=0</code>, <code>validation_skipped_edge=True</code></td></tr>
-<tr><td>권장 조치</td><td>validation edge를 복구하고 validation 없이는 final output을 생성하지 않도록 gate 처리</td></tr>
+<tr><td>Category</td><td>Tool Use</td></tr>
+<tr><td>Registry Severity</td><td>High</td></tr>
+<tr><td>Actual Severity</td><td>high</td></tr>
+<tr><td>Measurement Method</td><td>rule (context)</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>사용자 요청 target endpoint와 tool/metric path가 일치하는지.</td></tr>
+<tr><td>Detector Method</td><td>wrong_endpoint()</td></tr>
+<tr><td>Trace Events Used</td><td>run_start/chat_turn_start, tool_start, tool_end</td></tr>
+<tr><td>Trace Fields Used</td><td>user_input, filter_log_records.path_pattern, compute_log_metrics.top_paths[].path</td></tr>
+<tr><td>Implemented Failure Rule</td><td>tool argument or metric path differs from user target path</td></tr>
+<tr><td>Confidence</td><td>0.96</td></tr>
 </tbody></table>
-<h3>2.3 <code>target_endpoint_consistency</code></h3>
+<h3>2.3 <code>metric_result_consistency</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>사용자 요청에서 파싱한 target endpoint와 tool argument/metric path가 일치하는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>run_start</code> 또는 <code>chat_turn_start</code>, <code>tool_start</code>, <code>tool_end</code></td></tr>
-<tr><td>수집 필드</td><td><code>user_input</code>, <code>tool_start.arguments.path_pattern</code>, <code>tool_end.output.top_paths[].path</code></td></tr>
-<tr><td>target 추출</td><td><code>target_path_regex=(/[A-Za-z0-9_./-]+)</code></td></tr>
-<tr><td>대상 tool</td><td><code>filter_log_records</code>, <code>compute_log_metrics</code></td></tr>
-<tr><td>실패 조건 A</td><td><code>filter_log_records.path_pattern</code>이 사용자 요청의 target path와 다름</td></tr>
-<tr><td>실패 조건 B</td><td><code>compute_log_metrics</code> 결과의 <code>top_paths[].path</code>가 target path와 다름</td></tr>
-<tr><td>실패 severity</td><td><code>high</code></td></tr>
-<tr><td>confidence</td><td><code>0.96</code></td></tr>
-<tr><td>대표 evidence</td><td><code>filter_log_records.path_pattern=/wrong, expected=/api/login</code>, <code>metrics.top_paths contains /wrong, expected /api/login</code></td></tr>
-<tr><td>권장 조치</td><td>user input parsing 결과를 tool argument 생성 단계에 고정하고 argument validation 추가</td></tr>
+<tr><td>Category</td><td>Final Output / Completion</td></tr>
+<tr><td>Registry Severity</td><td>High</td></tr>
+<tr><td>Actual Severity</td><td>high</td></tr>
+<tr><td>Measurement Method</td><td>rule (tool output)</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>metric claim이 검증 가능한 tool output에서 왔는지.</td></tr>
+<tr><td>Detector Method</td><td>metric_consistency()</td></tr>
+<tr><td>Trace Events Used</td><td>react_step, tool_end, node_start, node_end</td></tr>
+<tr><td>Trace Fields Used</td><td>react_step.action, tool_end.tool, state.metrics.faultInjected</td></tr>
+<tr><td>Implemented Failure Rule</td><td>compute step without compute_log_metrics result or faultInjected metrics</td></tr>
+<tr><td>Confidence</td><td>0.90/0.98</td></tr>
 </tbody></table>
-<h3>2.4 <code>parse_error_handling_score</code></h3>
+<h3>2.4 <code>validation_path_coverage</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>access log parsing 실패율이 높을 때 정상 분석처럼 진행하지 않는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>tool_end</code> for <code>parse_access_log</code>, <code>final_output</code>, <code>validation_result</code></td></tr>
-<tr><td>수집 필드</td><td><code>tool_end.output.parse_error_count</code>, <code>tool_end.output.total_lines</code>, <code>final_output.content</code>, <code>validation_result.issues</code></td></tr>
-<tr><td>설정값</td><td><code>parse_error_ratio_threshold=0.5</code></td></tr>
-<tr><td>실패 조건</td><td><code>parse_error_count / total_lines &gt; 0.5</code></td></tr>
-<tr><td>보조 판단</td><td>final output 또는 validation issues에 <code>parse</code> 언급이 있는지 확인</td></tr>
-<tr><td>실패 severity</td><td><code>high</code></td></tr>
-<tr><td>confidence</td><td><code>0.94</code></td></tr>
-<tr><td>대표 evidence</td><td><code>parse_error_count=80, total_lines=100</code>, <code>high_parse_error_events=1</code>, <code>reflected_in_report_or_validation=False</code></td></tr>
-<tr><td>권장 조치</td><td>높은 parse error ratio를 validation failure로 취급하고 confident final report 생성을 막음</td></tr>
+<tr><td>Category</td><td>LangGraph Flow</td></tr>
+<tr><td>Registry Severity</td><td>Critical</td></tr>
+<tr><td>Actual Severity</td><td>critical</td></tr>
+<tr><td>Measurement Method</td><td>rule (expected path)</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>validate_findings node와 validation_result가 실행되었는지.</td></tr>
+<tr><td>Detector Method</td><td>validation_path()</td></tr>
+<tr><td>Trace Events Used</td><td>node_start, validation_result, edge_selected</td></tr>
+<tr><td>Trace Fields Used</td><td>node_start.node, validation_result count, edge_selected.reason</td></tr>
+<tr><td>Implemented Failure Rule</td><td>validate_findings node/result missing or validation skip edge detected</td></tr>
+<tr><td>Confidence</td><td>0.98</td></tr>
 </tbody></table>
-<h3>2.5 <code>metric_result_consistency</code></h3>
+<h3>2.5 <code>parse_error_handling_score</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>metric claim이 검증 가능한 tool output에서 왔는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>react_step</code>, <code>tool_end</code>, <code>node_start</code>, <code>node_end</code></td></tr>
-<tr><td>수집 필드</td><td><code>react_step.action</code>, <code>tool_end.tool</code>, <code>node_start.state_before.metrics</code>, <code>node_end.state_after.metrics</code></td></tr>
-<tr><td>대상 tool</td><td><code>compute_log_metrics</code></td></tr>
-<tr><td>실패 조건 A</td><td><code>react_step.action=compute_log_metrics</code>는 있는데 <code>tool_end(compute_log_metrics)</code>가 없음</td></tr>
-<tr><td>실패 조건 B</td><td>graph state metrics에 <code>faultInjected=true</code>가 있음</td></tr>
-<tr><td>실패 severity</td><td><code>high</code></td></tr>
-<tr><td>confidence</td><td>조건 A: <code>0.90</code>, 조건 B: <code>0.98</code></td></tr>
-<tr><td>대표 evidence</td><td><code>react_step selected compute_log_metrics but no tool_end(compute_log_metrics) event exists.</code>, <code>faultInjected metrics observed in node ...</code></td></tr>
-<tr><td>권장 조치</td><td>metric 계산은 반드시 tool output으로 기록하고, final claim은 tool output과 비교 검증</td></tr>
+<tr><td>Category</td><td>Tool Use</td></tr>
+<tr><td>Registry Severity</td><td>High</td></tr>
+<tr><td>Actual Severity</td><td>high</td></tr>
+<tr><td>Measurement Method</td><td>rule</td></tr>
+<tr><td>Value Type</td><td>0.0 ~ 1.0</td></tr>
+<tr><td>Description</td><td>높은 parse error ratio를 차단/반영했는지.</td></tr>
+<tr><td>Detector Method</td><td>parse_error_handling()</td></tr>
+<tr><td>Trace Events Used</td><td>tool_end(parse_access_log), final_output, validation_result</td></tr>
+<tr><td>Trace Fields Used</td><td>parse_error_count, total_lines, final_output.content, validation_result.issues</td></tr>
+<tr><td>Implemented Failure Rule</td><td>parse_error_count / total_lines &gt; 0.5</td></tr>
+<tr><td>Confidence</td><td>0.94</td></tr>
 </tbody></table>
 <h3>2.6 <code>rag_context_presence_and_usage</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>RAG runbook retrieval이 수행되고 final report에 반영되었는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>tool_end</code>, <code>final_output</code></td></tr>
-<tr><td>수집 필드</td><td><code>tool_end.tool</code>, <code>final_output.content</code></td></tr>
-<tr><td>대상 tool</td><td><code>retrieve_runbook</code></td></tr>
-<tr><td>실패 조건 A</td><td><code>tool_end(retrieve_runbook)</code> event가 없음</td></tr>
-<tr><td>실패 조건 B</td><td>retrieval은 있었지만 final report에 <code>## RAG Context</code> 섹션이 없음</td></tr>
-<tr><td>실패 severity</td><td><code>medium</code></td></tr>
-<tr><td>confidence</td><td>조건 A: <code>0.85</code>, 조건 B: <code>0.80</code></td></tr>
-<tr><td>대표 evidence</td><td><code>No tool_end(retrieve_runbook) event found.</code>, <code>RAG retrieved but final report lacks RAG Context section.</code></td></tr>
-<tr><td>권장 조치</td><td>final report 전 runbook retrieval을 호출하고 RAG Context 섹션을 output contract에 유지</td></tr>
+<tr><td>Category</td><td>Context / Retrieval</td></tr>
+<tr><td>Registry Severity</td><td>Medium</td></tr>
+<tr><td>Actual Severity</td><td>medium</td></tr>
+<tr><td>Measurement Method</td><td>rule</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>RAG retrieval과 final report 반영 여부.</td></tr>
+<tr><td>Detector Method</td><td>rag_mcp_presence()</td></tr>
+<tr><td>Trace Events Used</td><td>tool_end, final_output</td></tr>
+<tr><td>Trace Fields Used</td><td>tool_end.tool, final_output.content</td></tr>
+<tr><td>Implemented Failure Rule</td><td>retrieve_runbook missing or ## RAG Context missing</td></tr>
+<tr><td>Confidence</td><td>0.85/0.80</td></tr>
 </tbody></table>
-<h3>2.7 <code>mcp_context_presence_and_usage</code></h3>
+<h3>2.7 <code>instruction_adherence_score</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>MCP service context가 수집되고 final report에 반영되었는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>mcp_end</code>, <code>final_output</code></td></tr>
-<tr><td>수집 필드</td><td><code>mcp_end.method</code>, <code>final_output.content</code></td></tr>
-<tr><td>설정값</td><td><code>mcp_tools_call_method=tools/call</code></td></tr>
-<tr><td>실패 조건 A</td><td><code>mcp_end</code> event 중 <code>method=tools/call</code>이 없음</td></tr>
-<tr><td>실패 조건 B</td><td>MCP context fetch는 있었지만 final report에 <code>## MCP Context</code> 섹션이 없음</td></tr>
-<tr><td>실패 severity</td><td><code>medium</code></td></tr>
-<tr><td>confidence</td><td>조건 A: <code>0.85</code>, 조건 B: <code>0.80</code></td></tr>
-<tr><td>대표 evidence</td><td><code>No mcp_end tools/call event found.</code>, <code>MCP context fetched but final report lacks MCP Context section.</code></td></tr>
-<tr><td>권장 조치</td><td>final report 전 service context를 MCP로 조회하고 MCP Context 섹션을 output contract에 유지</td></tr>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>High</td></tr>
+<tr><td>Actual Severity</td><td>high</td></tr>
+<tr><td>Measurement Method</td><td>LLM judge + rule</td></tr>
+<tr><td>Value Type</td><td>0.0 ~ 1.0</td></tr>
+<tr><td>Description</td><td>Agent가 주어진 instruction을 따른 정도.</td></tr>
+<tr><td>Detector Method</td><td>instruction_adherence()</td></tr>
+<tr><td>Trace Events Used</td><td>prompt_instruction_metrics</td></tr>
+<tr><td>Trace Fields Used</td><td>instruction_adherence.score, instruction_adherence.violations</td></tr>
+<tr><td>Implemented Failure Rule</td><td>score &lt; 1.0 or violations present</td></tr>
+<tr><td>Confidence</td><td>0.90</td></tr>
 </tbody></table>
-<h3>2.8 <code>chat_context_grounding</code></h3>
+<h3>2.8 <code>mcp_context_presence_and_usage</code></h3>
 <table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
-<tr><td>판단 목적</td><td>후속 대화 응답이 이전 analysis/focus/evidence context에 grounded 되었는지 확인</td></tr>
-<tr><td>수집 trace/event</td><td><code>chat_*</code>, <code>chat_analysis_invoked</code>, <code>chat_context_built</code>, <code>chat_response_generated</code></td></tr>
-<tr><td>수집 필드</td><td><code>chat_context_built.has_last_analysis</code>, chat event 존재 여부</td></tr>
-<tr><td>적용 조건</td><td>trace에 <code>chat_</code> prefix event가 있을 때만 검사</td></tr>
-<tr><td>실패 조건 A</td><td>analysis invocation 이후 context build가 있었지만 <code>has_last_analysis=false</code></td></tr>
-<tr><td>실패 severity A</td><td><code>medium</code></td></tr>
-<tr><td>confidence A</td><td><code>0.82</code></td></tr>
-<tr><td>실패 조건 B</td><td>response가 생성되었지만 analysis invocation/context build evidence가 없음</td></tr>
-<tr><td>실패 severity B</td><td><code>low</code></td></tr>
-<tr><td>confidence B</td><td><code>0.70</code></td></tr>
-<tr><td>대표 evidence</td><td><code>chat_context_built has_last_analysis=false after analysis invocation.</code>, <code>Chat response generated without analysis invocation or context build.</code></td></tr>
-<tr><td>권장 조치</td><td>follow-up turn 전에 last analysis summary/focus/evidence를 session context에 저장하고 <code>chat_context_built</code> event를 남김</td></tr>
+<tr><td>Category</td><td>ReAct / RAG / MCP</td></tr>
+<tr><td>Registry Severity</td><td>Medium</td></tr>
+<tr><td>Actual Severity</td><td>medium</td></tr>
+<tr><td>Measurement Method</td><td>rule</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>MCP service context 수집과 final report 반영 여부.</td></tr>
+<tr><td>Detector Method</td><td>rag_mcp_presence()</td></tr>
+<tr><td>Trace Events Used</td><td>mcp_end, final_output</td></tr>
+<tr><td>Trace Fields Used</td><td>mcp_end.method, final_output.content</td></tr>
+<tr><td>Implemented Failure Rule</td><td>mcp tools/call missing or ## MCP Context missing</td></tr>
+<tr><td>Confidence</td><td>0.85/0.80</td></tr>
+</tbody></table>
+<h3>2.9 <code>chat_context_grounding</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>Category</td><td>Context / Retrieval</td></tr>
+<tr><td>Registry Severity</td><td>Medium</td></tr>
+<tr><td>Actual Severity</td><td>medium/low</td></tr>
+<tr><td>Measurement Method</td><td>rule</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>후속 대화가 직전 analysis/focus/evidence에 grounded 되었는지.</td></tr>
+<tr><td>Detector Method</td><td>chat_context()</td></tr>
+<tr><td>Trace Events Used</td><td>chat_*, chat_analysis_invoked, chat_context_built, chat_response_generated</td></tr>
+<tr><td>Trace Fields Used</td><td>chat_context_built.has_last_analysis</td></tr>
+<tr><td>Implemented Failure Rule</td><td>follow-up response not grounded in last analysis/context evidence</td></tr>
+<tr><td>Confidence</td><td>0.82/0.70</td></tr>
+</tbody></table>
+<h3>2.10 <code>output_format_compliance</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>Medium</td></tr>
+<tr><td>Actual Severity</td><td>medium</td></tr>
+<tr><td>Measurement Method</td><td>deterministic parser</td></tr>
+<tr><td>Value Type</td><td>pass/fail</td></tr>
+<tr><td>Description</td><td>요구된 output format을 지켰는지.</td></tr>
+<tr><td>Detector Method</td><td>output_format_compliance()</td></tr>
+<tr><td>Trace Events Used</td><td>prompt_instruction_metrics, final_output fallback</td></tr>
+<tr><td>Trace Fields Used</td><td>output_format.compliant, output_format.missing_sections</td></tr>
+<tr><td>Implemented Failure Rule</td><td>required output format is not compliant</td></tr>
+<tr><td>Confidence</td><td>0.92</td></tr>
+</tbody></table>
+<h3>2.11 <code>prompt_template_version_present</code></h3>
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody>
+<tr><td>Category</td><td>Prompt / Instruction</td></tr>
+<tr><td>Registry Severity</td><td>Low</td></tr>
+<tr><td>Actual Severity</td><td>low</td></tr>
+<tr><td>Measurement Method</td><td>trace 검사</td></tr>
+<tr><td>Value Type</td><td>존재 여부</td></tr>
+<tr><td>Description</td><td>trace에 prompt template 이름/version이 기록되어 있는지.</td></tr>
+<tr><td>Detector Method</td><td>prompt_template_version()</td></tr>
+<tr><td>Trace Events Used</td><td>instruction_snapshot, prompt_instruction_metrics</td></tr>
+<tr><td>Trace Fields Used</td><td>prompt_template.name, prompt_template.version, prompt_template.present</td></tr>
+<tr><td>Implemented Failure Rule</td><td>prompt template name/version missing</td></tr>
+<tr><td>Confidence</td><td>0.90</td></tr>
 </tbody></table>
 <h2>3. 점수와 Gate 계산</h2>
-<p>Finding metric별로 별도의 numeric score를 계산하는 것이 아니라, finding severity penalty를 합산해 run score와 gate를 산출합니다.</p>
-<h3>Severity penalty</h3>
-<table><thead><tr><th>Severity</th><th>Penalty</th></tr></thead><tbody>
-<tr><td><code>critical</code></td><td>30</td></tr>
-<tr><td><code>high</code></td><td>15</td></tr>
-<tr><td><code>medium</code></td><td>7</td></tr>
-<tr><td><code>low</code></td><td>2</td></tr>
-</tbody></table>
-<p>계산식:</p>
-<pre><code>score = max(0, 100 - sum(severity_penalty for each finding))</code></pre>
-<h3>Gate</h3>
-<table><thead><tr><th>조건</th><th>Gate</th></tr></thead><tbody>
-<tr><td>critical finding 존재 또는 score &lt; 70</td><td><code>block</code></td></tr>
-<tr><td>high finding 존재 또는 score &lt; 85</td><td><code>warning</code></td></tr>
-<tr><td>그 외</td><td><code>pass</code></td></tr>
-</tbody></table>
-<h2>4. 실제 구현 metric과 설계 지표의 차이</h2>
-<p>현재 <code>metrics.json</code>/<code>docs/DRIFT_METRICS.xlsx</code>에는 장기 설계용 지표가 포함되어 있습니다. 하지만 detector가 현재 실제로 생성하는 metric은 위 8개뿐입니다.</p>
-<p>구현 지표에 없는 설계 지표 예시는 다음과 같습니다.</p>
-<ul>
-<li><code>tool_argument_correctness</code></li>
-<li><code>tool_error_handling_score</code></li>
-<li><code>answer_context_groundedness</code></li>
-<li><code>node_sequence_correctness</code></li>
-<li><code>verification_coverage</code></li>
-<li><code>instruction_adherence_score</code></li>
-<li><code>redundant_tool_call_count</code></li>
-<li><code>missing_required_context</code></li>
-<li><code>retrieval_context_precision</code></li>
-<li><code>retrieval_context_relevance</code></li>
-<li><code>final_answer_consistency</code></li>
-<li><code>hallucinated_completion_claim</code></li>
-<li><code>task_completion_score</code></li>
-<li><code>edge_decision_correctness</code></li>
-<li><code>graph_completion_path_valid</code></li>
-<li><code>node_loop_count</code></li>
-<li><code>required_checkpoint_present</code></li>
-<li><code>memory_claim_supported</code></li>
-</ul>
-<p>위 지표들은 설계/후보 지표로 볼 수 있으며, 실제 판단 지표로 사용하려면 detector 구현과 trace 수집 이벤트가 추가되어야 합니다.</p>
-<h2>5. 코드 기준 출처</h2>
-<table><thead><tr><th>내용</th><th>파일</th></tr></thead><tbody>
-<tr><td>metric 생성 위치</td><td><code>judgeagent/judge_agent/analysis/detectors.py</code></td></tr>
-<tr><td>detector 설정</td><td><code>judgeagent/judge_agent/config/detector_rules.json</code></td></tr>
-<tr><td>trace adapter</td><td><code>judgeagent/judge_agent/adapters/reference.py</code></td></tr>
-<tr><td>분석 entrypoint</td><td><code>judgeagent/judge_agent/analysis/analyzer.py</code></td></tr>
-<tr><td>score/gate 계산</td><td><code>judgeagent/judge_agent/analysis/detectors.py</code>의 <code>score_findings()</code>, <code>gate_for()</code></td></tr>
-</tbody></table>
-<h2>6. 향후 정리 권장안</h2>
-<ol>
-<li><code>metrics.json</code>에 <code>implemented: true/false</code> 또는 <code>implementation_status</code> 필드를 추가합니다.</li>
-<li>실제 detector가 생성하는 8개 metric만 frontend의 “implemented metrics” 화면에 표시합니다.</li>
-<li>설계 지표는 별도 “planned metrics” 또는 “candidate metrics”로 분리합니다.</li>
-<li>metric 추가 시 다음 4가지를 한 PR에서 같이 수정합니다.</li>
-</ol>
-<p>   - trace event 수집</p>
-<p>   - detector 구현</p>
-<p>   - metric registry metadata</p>
-<p>   - regression test</p>
-</main>
-</body>
-</html>
+<pre><code>score = max(0, 100 - sum(severity_penalty for each finding))</code></pre></main></body></html>
