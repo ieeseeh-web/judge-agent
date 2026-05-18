@@ -42,27 +42,18 @@ function App() {
     init();
   }, []);
 
-  const handleRun = async (fixtureId: string, useLlm: boolean, promptOverrides?: PromptOverrides) => {
-    setIsLoading(true);
-    try {
-      const run = await api.runReferenceAgent(fixtureId, useLlm, promptOverrides);
-      setReferenceRun(run);
-      // Reset judge state
-      setSummary(null);
-      setFindings([]);
-      setSessionId(null);
-      setPromptRegression(null);
-      setMessages([{
-        id: `sys-${Date.now()}`,
-        role: 'system',
-        content: `✅ 실행 완료 (Fixture: ${fixtureId}).\n좌측 상단의 [Judge this trace] 버튼을 클릭하여 트레이스를 분석하세요.`,
-        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }]);
-    } catch (e) {
-      messageApi.error('Failed to run: ' + e);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleRun = (run: ReferenceRun) => {
+    setReferenceRun(run);
+    setSummary(null);
+    setFindings([]);
+    setSessionId(null);
+    setPromptRegression(null);
+    setMessages([{
+      id: `sys-${Date.now()}`,
+      role: 'system',
+      content: `✅ 실행 완료.\n좌측 상단의 [Judge this trace] 버튼을 클릭하여 트레이스를 분석하세요.`,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }]);
   };
 
 

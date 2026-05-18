@@ -22,5 +22,13 @@
     "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779111637787.conversation.json",
     "createdAt": 1779111637.8040938,
     "updatedAt": 1779111643.459372
+  },
+  "session-1779112620760": {
+    "id": "session-1779112620760",
+    "mode": "hybrid",
+    "analysisId": "ana_20260518_225700_657",
+    "sessionPath": "artifacts/frontend-api/judge-sessions/session-1779112620760.conversation.json",
+    "createdAt": 1779112620.77986,
+    "updatedAt": 1779112620.77986
   }
 }

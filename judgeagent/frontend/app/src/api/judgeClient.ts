@@ -40,17 +40,7 @@ export async function getFixtures(): Promise<any[]> {
   return data.fixtures || [];
 }
 
-export async function runReferenceAgent(fixtureId: string, useLlm: boolean = false, promptOverrides?: PromptOverrides): Promise<ReferenceRun> {
-  const data = await apiFetch<any>('/api/reference/runs', {
-    method: 'POST',
-    body: JSON.stringify({
-      mode: 'fixture',
-      fixtureId,
-      useLlm,
-      promptOverrides,
-    }),
-  });
-  const run = data.run;
+function mapRun(run: any): ReferenceRun {
   return {
     id: run.id,
     fixture: run.fixtureId,
@@ -70,6 +60,22 @@ export async function runReferenceAgent(fixtureId: string, useLlm: boolean = fal
       detail: ev.detail,
     })),
   };
+}
+
+export async function runReferenceAgent(fixtureId: string, useLlm: boolean = false, promptOverrides?: PromptOverrides): Promise<ReferenceRun> {
+  const data = await apiFetch<any>('/api/reference/runs', {
+    method: 'POST',
+    body: JSON.stringify({ mode: 'fixture', fixtureId, useLlm, promptOverrides }),
+  });
+  return mapRun(data.run);
+}
+
+export async function runReferenceAgentCustom(userInput: string, useLlm: boolean = true, promptOverrides?: PromptOverrides): Promise<ReferenceRun> {
+  const data = await apiFetch<any>('/api/reference/runs', {
+    method: 'POST',
+    body: JSON.stringify({ mode: 'custom-analysis', userInput, useLlm, promptOverrides }),
+  });
+  return mapRun(data.run);
 }
 
 export async function createAnalysis(referenceRunId: string, adapter: string): Promise<any> {

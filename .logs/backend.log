@@ -79,3 +79,14 @@ INFO:     127.0.0.1:60445 - "GET /api/reference/prompts HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60441 - "GET /api/config HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60450 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60450 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60518 - "OPTIONS /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60518 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60520 - "OPTIONS /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60520 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60522 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60522 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60527 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60531 - "OPTIONS /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60531 - "POST /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60531 - "OPTIONS /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60533 - "POST /api/judge/sessions HTTP/1.1" 200 OK
