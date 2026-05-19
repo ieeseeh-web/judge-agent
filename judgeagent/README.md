@@ -13,6 +13,22 @@ judgeagent/
 └── README.md             # 이 문서
 ```
 
+## v0.4.0 신규 기능 (2026-05-19)
+
+| 기능 | 항목 | 설명 |
+|------|------|------|
+| 신규 Detector | `tool_argument_mismatch` | tool 인자 불일치 (status 범위, path 누락) 감지 |
+| 신규 Detector | `repeated_tool_call` | 동일 tool 반복 호출 / ReAct 루프 감지 |
+| 신규 Detector | `context_hallucination` | final output 수치가 tool 산출값과 불일치 감지 |
+| 신규 메트릭 | 4개 추가 | `task_completion_rate`, `tool_argument_correctness`, `repeated_tool_call`, `context_hallucination` |
+| Run 히스토리 UI | Chat / Run History 탭 | 과거 run 목록 필터·조회, Judge/Baseline 재사용 |
+| SQLite 저장소 | `USE_SQLITE_STORE=1` | 파일 기반 → SQLite 전환 (WAL 모드, 동시성 안전) |
+| CI/CD | GitHub Actions | PR 머지 전 자동 regression 체크 + PR 코멘트 게시 |
+
+> 상세 사용법: [`docs/IMPLEMENTATION_USAGE_GUIDE.html`](docs/IMPLEMENTATION_USAGE_GUIDE.html)
+
+---
+
 ## UI 주요 기능
 
 ### 화면 레이아웃
@@ -244,6 +260,16 @@ weblog-agent run-all --no-llm
 - `artifacts/frontend-api/analyses/` — Judge Agent 분석 결과
 - `artifacts/frontend-api/judge-sessions/` — 대화형 judge session 상태
 - `artifacts/frontend-api/prompt-regressions/` — Prompt/Model regression 비교 결과
+- `artifacts/frontend-api/judge_agent.db` — SQLite 저장소 (USE_SQLITE_STORE=1 활성화 시)
+
+## 관련 문서
+
+| 문서 | 경로 |
+|------|------|
+| 개발 가이드 | `judgeagent/DEVELOPMENT_GUIDE.md` |
+| Prompt Regression 사용 가이드 | `docs/PROMPT_REGRESSION_USAGE_GUIDE.md` |
+| **신규 기능 사용법 가이드** | **`docs/IMPLEMENTATION_USAGE_GUIDE.html`** |
+| 향후 개발 요구사항 명세 | `docs/FUTURE_DEVELOPMENT_REQUIREMENTS.html` |
 
 ## 개발 참고
 
@@ -253,3 +279,4 @@ weblog-agent run-all --no-llm
   - `.[agent]` — LangGraph/LangChain/MCP 계열 agent runtime
 - LLM/API key는 코드에 넣지 말고 `.env` 또는 환경변수를 사용합니다.
 - `judge_agent/config/*.json`에서 detector, metric, conversation 기본 동작을 조정할 수 있습니다.
+- SQLite 저장소 전환: `USE_SQLITE_STORE=1` 환경변수 설정 후 재시작.

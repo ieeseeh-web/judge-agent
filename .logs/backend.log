@@ -208,3 +208,84 @@ INFO:     127.0.0.1:54341 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
 INFO:     127.0.0.1:54340 - "GET /api/reference/runs?limit=50 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:54343 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
 INFO:     127.0.0.1:54341 - "GET /api/reference/runs?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54732 - "OPTIONS /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54733 - "OPTIONS /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54732 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54736 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54733 - "OPTIONS /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54732 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54737 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54740 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54736 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54733 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54732 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54736 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54740 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54741 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54740 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54746 - "OPTIONS /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54747 - "OPTIONS /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54750 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54751 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54746 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54750 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54747 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54746 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54750 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54747 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54753 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54753 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54784 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54789 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54788 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54784 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54789 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54786 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54792 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54789 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54796 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54801 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54800 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54796 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54801 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54800 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54797 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54797 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54812 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54812 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54817 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54817 - "POST /api/reference/runs HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:54839 - "POST /api/reference/runs HTTP/1.1" 500 Internal Server Error
+WARNING:  StatReload detected changes in 'judgeagent/backend/api_services.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83333]
+INFO:     Started server process [84754]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'judgeagent/backend/api_services.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [84754]
+INFO:     Started server process [84768]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'judgeagent/backend/api_services.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [84768]
+INFO:     Started server process [84785]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:54856 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54894 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54909 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54939 - "POST /api/reference/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55037 - "OPTIONS /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55037 - "POST /api/analyses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55037 - "OPTIONS /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55039 - "POST /api/judge/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55043 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK

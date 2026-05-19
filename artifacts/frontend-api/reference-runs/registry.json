@@ -5223,5 +5223,892 @@
     ],
     "createdAt": 1779191599.14538,
     "updatedAt": 1779191599.14538
+  },
+  "ref_20260519_213823_348_custom-analysis_e3c0ce": {
+    "id": "ref_20260519_213823_348_custom-analysis_e3c0ce",
+    "mode": "custom-analysis",
+    "status": "failed",
+    "error": {
+      "type": "AttributeError",
+      "message": "'OpenAICompatibleChatClient' object has no attribute 'enabled'"
+    },
+    "createdAt": 1779194303.351893,
+    "updatedAt": 1779194303.351894
+  },
+  "ref_20260519_214034_801_custom-analysis_b0c723": {
+    "id": "ref_20260519_214034_801_custom-analysis_b0c723",
+    "mode": "custom-analysis",
+    "status": "failed",
+    "error": {
+      "type": "AttributeError",
+      "message": "'OpenAICompatibleChatClient' object has no attribute 'enabled'"
+    },
+    "createdAt": 1779194434.802798,
+    "updatedAt": 1779194434.802798
+  },
+  "ref_20260519_214156_687_custom-analysis_b594fe": {
+    "id": "ref_20260519_214156_687_custom-analysis_b594fe",
+    "mode": "custom-analysis",
+    "status": "succeeded",
+    "fixtureId": null,
+    "userInput": "/api/login 5xx 에러율 분석",
+    "accessLogPath": "/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log",
+    "useLlm": true,
+    "modelId": "gemma4:latest",
+    "promptVariant": "default",
+    "promptOverrides": [],
+    "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_214156_687_custom-analysis_b594fe.jsonl",
+    "reportPath": "artifacts/frontend-api/reference-runs/reports/ref_20260519_214156_687_custom-analysis_b594fe.md",
+    "eventCounts": {
+      "run_start": 1,
+      "instruction_snapshot": 1,
+      "node_start": 4,
+      "mcp_start": 1,
+      "mcp_end": 1,
+      "agent_components": 1,
+      "node_end": 4,
+      "edge_selected": 3,
+      "llm_start": 11,
+      "llm_end": 11,
+      "react_step": 10,
+      "observation": 10,
+      "tool_start": 9,
+      "tool_end": 9,
+      "validation_result": 2,
+      "prompt_instruction_metrics": 1,
+      "final_output": 1,
+      "run_end": 1
+    },
+    "timelinePreview": [
+      {
+        "index": 4,
+        "type": "mcp_end",
+        "title": "tools/list",
+        "detail": ""
+      },
+      {
+        "index": 11,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "The user has provided a structured state object and a request: \"/api/login 5xx 에러율 분석\" (Analyze 5xx error rate for /api/login). I need to follow the ReAct pattern. First, I must parse the user request to extract the necessary parameters (target path, status range, etc.)."
+      },
+      {
+        "index": 15,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object indicating the next step in the analysis. The initial step (step 1) likely involved parsing the user request, which has already been done and is reflected in the state. The next logical step is to load and parse the raw log file using the provided path and format. The state shows `accessLogPath` and `format` are available."
+      },
+      {
+        "index": 16,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 17,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 21,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object indicating the current step (3) and the initial request details. The goal is to analyze the 5xx error rate for the path `/api/login` using the provided access log file. \n\nBased on the state, the next logical steps are:\n1. Load the raw log file (`read_log_file`).\n2. Parse the raw logs into structured records (`parse_access_log`).\n3. Filter the parsed records based on the target path and status code range (`filter_log_records`).\n4. Compute the required metrics (error rate) on the filtered data (`compute_log_metrics`).\n\nI will start by loading the raw log file."
+      },
+      {
+        "index": 22,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 23,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 27,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object indicating the initial steps of a log analysis request. The goal is to analyze the 5xx error rate for the path `/api/login`. The state shows that the raw logs are available, but the logs have not yet been parsed or filtered. I must first load the raw logs, then parse them, and finally filter them to focus on the target path and 5xx status codes. I will start by reading the raw log file."
+      },
+      {
+        "index": 28,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 29,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 33,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object indicating the initial steps have been taken (step 5). The goal is to analyze the 5xx error rate for the `/api/login` endpoint using the provided access log. \n\nBased on the state, the next logical steps are:\n1. Load the raw logs (if not already loaded).\n2. Parse the raw logs into structured records.\n3. Filter the records specifically for the target path (`/api/login`) and the 5xx status range.\n4. Compute the required metrics (error rate).\n5. Check for anomalies and gather context (runbook, service context).\n\nSince the state shows `parsedRecordCount: 0` and `filteredRecordCount: 0`, I must start by loading and parsing the logs. I will start by loading the raw log file."
+      },
+      {
+        "index": 34,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 35,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 39,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object indicating the goal: analyze the 5xx error rate for the path `/api/login`. The raw logs are available, and the state shows that the logs have not yet been parsed or filtered. The first necessary step is to load the raw logs, then parse them, and finally filter them to focus on the target path and 5xx status codes. I will start by reading the log file."
+      },
+      {
+        "index": 40,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 41,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 45,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object indicating the goal is to analyze the 5xx error rate for the path `/api/login`. The raw logs are available, and the initial parsing and filtering steps need to be executed. First, I must load the raw logs, then parse them, and finally filter them based on the specified path and 5xx status codes. I will start by loading the raw log file."
+      },
+      {
+        "index": 46,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 47,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 51,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user has provided a state object indicating the current step (8) and the state of the analysis. The initial request was to analyze the 5xx error rate for the path `/api/login`. The state shows that the raw logs are available, but no parsing or filtering has been done yet. The next logical steps are to parse the raw logs, then filter them based on the specified path and status code range (5xx), and finally compute the required metrics (error rate). I will start by parsing the logs."
+      },
+      {
+        "index": 52,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 53,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 57,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user request is to analyze the 5xx error rate for the path `/api/login`. The state shows that the initial parsing was successful, and the necessary parameters (targetPath, statusFocus, requestedMetrics) are extracted. The next logical steps are to load the raw logs, parse them, filter them based on the criteria, compute the required metrics (error rate), and then detect any anomalies or gather context (service context, runbook) before reporting."
+      },
+      {
+        "index": 58,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 59,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 63,
+        "type": "react_step",
+        "title": "filter_log_records",
+        "detail": "The user has provided a state object indicating the goal: analyze the 5xx error rate for the path `/api/login`. The initial steps (1-9) have likely parsed the request and loaded/parsed the logs. The current state shows `filteredRecordCount: 0`, meaning no records have been filtered yet, and the `metrics` are empty. The next logical step is to filter the parsed logs using the specified path (`/api/login`) and status range (`5xx` errors, which means status codes 500-599). I must use `filter_log_records` first."
+      },
+      {
+        "index": 64,
+        "type": "tool_start",
+        "title": "filter_log_records",
+        "detail": ""
+      },
+      {
+        "index": 65,
+        "type": "tool_end",
+        "title": "filter_log_records",
+        "detail": ""
+      },
+      {
+        "index": 70,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 76,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 79,
+        "type": "final_output",
+        "title": "final_output",
+        "detail": "## Summary\nThe analysis for the 5xx error rate on the `/api/login` endpoint could not be completed. The provided ReAct state indicates that the necessary contextual information (Runbook/RAG and Service Metadata/MCP) was missing, and no specific metrics or evidence were successfully extracted during the analysis loop.\n\n## Key Metrics\n*   **Parse Error Count:** 0\n*   **Error Rate (5xx):** Cannot be determined due to missing evidence and context.\n\n## Anomalies\nNo anomalies were detected or reported in the provided state.\n\n## Evidence\nNo specific log lines or metric references were successfully extracted and provided in the current state. The raw logs contained 100 lines, but no actionable evidence was logged.\n\n## RAG Context\nNo runbook or domain knowledge context was retrieved. (Validation Issue: `rag_context_missing`)\n\n## MCP Context\nNo service ownership, SLO, or deployment metadata was retrieved. (Validation Issue: `mcp_context_missing`)\n\n## Likely Causes\n*   **Technical Limitation:** T"
+      }
+    ],
+    "createdAt": 1779194717.014696,
+    "updatedAt": 1779194717.014696
+  },
+  "ref_20260519_214517_032_custom-analysis_61a36d": {
+    "id": "ref_20260519_214517_032_custom-analysis_61a36d",
+    "mode": "custom-analysis",
+    "status": "succeeded",
+    "fixtureId": null,
+    "userInput": "/api/login 5xx 에러율 분석",
+    "accessLogPath": "/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log",
+    "useLlm": false,
+    "modelId": "gemma4:latest",
+    "promptVariant": "default",
+    "promptOverrides": [],
+    "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_214517_032_custom-analysis_61a36d.jsonl",
+    "reportPath": "artifacts/frontend-api/reference-runs/reports/ref_20260519_214517_032_custom-analysis_61a36d.md",
+    "eventCounts": {
+      "run_start": 1,
+      "instruction_snapshot": 1,
+      "node_start": 4,
+      "mcp_start": 2,
+      "mcp_end": 2,
+      "agent_components": 1,
+      "node_end": 4,
+      "edge_selected": 3,
+      "llm_skipped": 11,
+      "react_step": 10,
+      "observation": 9,
+      "tool_start": 6,
+      "tool_end": 6,
+      "validation_result": 2,
+      "prompt_instruction_metrics": 1,
+      "final_output": 1,
+      "run_end": 1
+    },
+    "timelinePreview": [
+      {
+        "index": 4,
+        "type": "mcp_end",
+        "title": "tools/list",
+        "detail": ""
+      },
+      {
+        "index": 10,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "Need to understand the user's target endpoint and metrics first."
+      },
+      {
+        "index": 13,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "Need raw access logs before computing evidence."
+      },
+      {
+        "index": 14,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 15,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 18,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "Need structured log records for analysis."
+      },
+      {
+        "index": 19,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 20,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 23,
+        "type": "react_step",
+        "title": "filter_log_records",
+        "detail": "Need records scoped to the requested endpoint/status range."
+      },
+      {
+        "index": 24,
+        "type": "tool_start",
+        "title": "filter_log_records",
+        "detail": ""
+      },
+      {
+        "index": 25,
+        "type": "tool_end",
+        "title": "filter_log_records",
+        "detail": ""
+      },
+      {
+        "index": 28,
+        "type": "react_step",
+        "title": "compute_log_metrics",
+        "detail": "Need deterministic metrics from filtered records."
+      },
+      {
+        "index": 29,
+        "type": "tool_start",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 30,
+        "type": "tool_end",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 33,
+        "type": "react_step",
+        "title": "detect_log_anomalies",
+        "detail": "Need anomaly detection against thresholds and baseline."
+      },
+      {
+        "index": 34,
+        "type": "tool_start",
+        "title": "detect_log_anomalies",
+        "detail": ""
+      },
+      {
+        "index": 35,
+        "type": "tool_end",
+        "title": "detect_log_anomalies",
+        "detail": ""
+      },
+      {
+        "index": 38,
+        "type": "react_step",
+        "title": "retrieve_runbook",
+        "detail": "Need runbook context via RAG for likely causes and actions."
+      },
+      {
+        "index": 39,
+        "type": "tool_start",
+        "title": "retrieve_runbook",
+        "detail": ""
+      },
+      {
+        "index": 40,
+        "type": "tool_end",
+        "title": "retrieve_runbook",
+        "detail": ""
+      },
+      {
+        "index": 43,
+        "type": "react_step",
+        "title": "get_service_context",
+        "detail": "Need MCP service metadata for owner, SLO, dependencies, and deployments."
+      },
+      {
+        "index": 45,
+        "type": "mcp_end",
+        "title": "get_service_context",
+        "detail": ""
+      },
+      {
+        "index": 48,
+        "type": "react_step",
+        "title": "collect_evidence",
+        "detail": "Need evidence snippets tied to computed metrics."
+      },
+      {
+        "index": 52,
+        "type": "react_step",
+        "title": "finish",
+        "detail": "All required observations are available; generate final answer."
+      },
+      {
+        "index": 56,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 60,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 63,
+        "type": "final_output",
+        "title": "final_output",
+        "detail": "## Summary\n\nAnalyzed web logs for `/api/login` using a ReAct agent flow with tools, RAG, and MCP context. Request count was 80 and error rate was 15.00%.\n\n## Key Metrics\n\n- request_count: 80\n- error_count: 12\n- 5xx_count: 12\n- error_rate: 15.00%\n- p95_latency_ms: 1400\n\n## Anomalies\n\n- **error_rate_spike** (critical): error_rate=0.15 expected=0.05 — error_rate exceeded critical threshold\n- **latency_spike** (medium): p95_latency_ms=1400 expected=1000 — p95 latency exceeded warning threshold\n\n## Evidence\n\nRepresentative log lines:\n\n- `203.0.113.1 - - [13/May/2026:03:00:00 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.2 - - [13/May/2026:03:00:30 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.3 - - [13/May/2026:03:01:00 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.4 - - [13/May/2026:03:01:30 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.5 - - [13/May/2"
+      }
+    ],
+    "createdAt": 1779194717.093994,
+    "updatedAt": 1779194717.093994
+  },
+  "ref_20260519_214517_099_custom-analysis_2b8cdb": {
+    "id": "ref_20260519_214517_099_custom-analysis_2b8cdb",
+    "mode": "custom-analysis",
+    "status": "succeeded",
+    "fixtureId": null,
+    "userInput": "test",
+    "accessLogPath": "/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log",
+    "useLlm": true,
+    "modelId": "gemma4:latest",
+    "promptVariant": "default",
+    "promptOverrides": [],
+    "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_214517_099_custom-analysis_2b8cdb.jsonl",
+    "reportPath": "artifacts/frontend-api/reference-runs/reports/ref_20260519_214517_099_custom-analysis_2b8cdb.md",
+    "eventCounts": {
+      "run_start": 1,
+      "instruction_snapshot": 1,
+      "node_start": 4,
+      "mcp_start": 1,
+      "mcp_end": 1,
+      "agent_components": 1,
+      "node_end": 4,
+      "edge_selected": 3,
+      "llm_start": 11,
+      "llm_end": 11,
+      "react_step": 10,
+      "observation": 10,
+      "tool_start": 7,
+      "tool_end": 7,
+      "validation_result": 2,
+      "prompt_instruction_metrics": 1,
+      "final_output": 1,
+      "run_end": 1
+    },
+    "timelinePreview": [
+      {
+        "index": 4,
+        "type": "mcp_end",
+        "title": "tools/list",
+        "detail": ""
+      },
+      {
+        "index": 11,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "The user has provided an initial state object, indicating the goal is to analyze web logs. The first step is to parse the user's request to understand the scope of the analysis (metrics, paths, status codes)."
+      },
+      {
+        "index": 15,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user has provided a state object, indicating that the initial steps (like parsing the request and loading/parsing logs) have already occurred or are implied. The current state shows `parsedRecordCount: 0` and `filteredRecordCount: 0`, and `metrics: {}`. The goal is to analyze the web logs for the requested metric: `error_rate`. \n\nSince the logs are available at `/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log` and the format is `nginx_combined`, the first necessary step is to load and parse the raw logs to make them usable for metric computation. Although the state shows `parsedRecordCount: 0`, I must explicitly call the parsing tool to proceed with the analysis."
+      },
+      {
+        "index": 16,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 17,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 21,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "Need to understand the user's target endpoint and metrics first."
+      },
+      {
+        "index": 25,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user has provided a state object, which indicates that the initial steps (parsing the request, loading, and parsing the logs) have already been attempted or are in progress. The current state shows `parsedRecordCount: 0` and `filteredRecordCount: 0`, and the `validation` status is `passed: false`. The goal is to analyze the web logs for the requested metric: `error_rate`. Since the logs haven't been successfully parsed or filtered yet, I need to start by loading and parsing the logs using the provided path and format. The `read_log_file` and `parse_access_log` tools are necessary first steps."
+      },
+      {
+        "index": 26,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 27,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 31,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user has provided a state object, indicating that the initial steps (parsing the request, loading logs, and parsing logs) have been executed or are assumed to be in progress. The current state shows `parsedRecordCount: 0`, meaning the logs have not yet been parsed. The goal is to analyze the web logs for the `error_rate`. Therefore, the immediate next steps are to parse the raw logs and then filter and compute metrics."
+      },
+      {
+        "index": 32,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 33,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 37,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "Need to understand the user's target endpoint and metrics first."
+      },
+      {
+        "index": 41,
+        "type": "react_step",
+        "title": "compute_log_metrics",
+        "detail": "The user has provided a complex state object, which appears to be an internal state dump from a previous failed step (step 7). The goal is to act as the Web Log Analysis ReAct agent and process this information to generate a final report. The state shows that the logs have been loaded and parsed, but no metrics have been computed, and the final report is not present. The initial user request was 'test', and the state indicates the requested metric is 'error_rate' and the log source is available. I need to proceed with the analysis flow: 1. Compute metrics (error rate). 2. Detect anomalies. 3. Gather context (Service/Runbook). 4. Generate the final report. Since the state is already loaded and parsed, I should start by computing the required metrics."
+      },
+      {
+        "index": 42,
+        "type": "tool_start",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 43,
+        "type": "tool_end",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 47,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user has provided a complex state object, which appears to be an internal system state dump from a previous failed step (step 8). The goal is to act as a production-grade Web Log Analysis ReAct agent. The state shows that the initial parsing and analysis steps have failed or are incomplete (e.g., `filteredRecordCount: 0`, `metrics` are all zero). The original user request is not visible, but the state suggests the system was attempting to analyze web logs for `error_rate`. Since the state is a dump and not a direct user query, I must assume the goal is to proceed with the analysis using the provided context and tools, starting from the most basic necessary step: ensuring the logs are loaded and parsed correctly, and then computing the metrics."
+      },
+      {
+        "index": 48,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 49,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 53,
+        "type": "react_step",
+        "title": "compute_log_metrics",
+        "detail": "The user has provided a complex state object from a previous step, indicating that the initial request parsing failed and the subsequent analysis steps have not been executed. The goal is to act as a production-grade Web Log Analysis ReAct agent and analyze the logs based on the available information and the user's implicit goal (which is to analyze the web logs). Since the state shows that the logs have been loaded and parsed (100 records), and the primary requested metric is 'error_rate', I need to proceed with the analysis. First, I must ensure the logs are properly parsed and then compute the required metrics. Since the state shows `parsedRecordCount: 100`, I will assume the parsing is complete and proceed to compute metrics."
+      },
+      {
+        "index": 54,
+        "type": "tool_start",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 55,
+        "type": "tool_end",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 59,
+        "type": "react_step",
+        "title": "compute_log_metrics",
+        "detail": "The user has provided a complex state object, which appears to be the output of a previous step or a system state dump, rather than a direct user query. The state shows that the initial request parsing was attempted, but the final report is not present, and the last step failed. The goal is to analyze the web logs based on the available information. The state indicates the log source is an Nginx combined access log, and the requested metric is 'error_rate'. Since the state shows the logs are already available and parsed (100 records), the next logical steps are to compute the metrics and then check for anomalies and context."
+      },
+      {
+        "index": 60,
+        "type": "tool_start",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 61,
+        "type": "tool_end",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 66,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 72,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 75,
+        "type": "final_output",
+        "title": "final_output",
+        "detail": "## Summary\nThe log analysis could not be completed successfully. The provided ReAct state indicates multiple technical failures (e.g., \"LLM ReAct decision failed,\" \"ReAct loop exceeded max steps\") and critical missing context, preventing the generation of actionable insights. All measured metrics are reported as zero, and no supporting evidence, runbook context, or service metadata was available.\n\n## Key Metrics\n| Metric | Value | Notes |\n| :--- | :--- | :--- |\n| Request Count | 0 | No requests were counted in the provided state. |\n| Error Count | 0 | No errors were counted in the provided state. |\n| 4xx Count | 0 | No 4xx errors were counted. |\n| 5xx Count | 0 | No 5xx errors were counted. |\n| Error Rate | 0.0% | Calculated based on zero counts. |\n| P50 Latency | 0 ms | No latency data was available. |\n| P95 Latency | 0 ms | No latency data was available. |\n| P99 Latency | 0 ms | No latency data was available. |\n| Top Paths | None | No top paths were identified. |\n| Top IPs | None | N"
+      }
+    ],
+    "createdAt": 1779194961.4411252,
+    "updatedAt": 1779194961.4411252
+  },
+  "ref_20260519_214921_457_custom-analysis_0ce2b0": {
+    "id": "ref_20260519_214921_457_custom-analysis_0ce2b0",
+    "mode": "custom-analysis",
+    "status": "succeeded",
+    "fixtureId": null,
+    "userInput": "지난 1시간 동안 /api/login endpoint에서 5xx 에러율을 분석해주세요.",
+    "accessLogPath": "/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log",
+    "useLlm": true,
+    "modelId": "gemma4:latest",
+    "promptVariant": "default",
+    "promptOverrides": [],
+    "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_214921_457_custom-analysis_0ce2b0.jsonl",
+    "reportPath": "artifacts/frontend-api/reference-runs/reports/ref_20260519_214921_457_custom-analysis_0ce2b0.md",
+    "eventCounts": {
+      "run_start": 1,
+      "instruction_snapshot": 1,
+      "node_start": 4,
+      "mcp_start": 1,
+      "mcp_end": 1,
+      "agent_components": 1,
+      "node_end": 4,
+      "edge_selected": 3,
+      "llm_start": 11,
+      "llm_end": 11,
+      "react_step": 10,
+      "observation": 10,
+      "tool_start": 9,
+      "tool_end": 9,
+      "validation_result": 2,
+      "prompt_instruction_metrics": 1,
+      "final_output": 1,
+      "run_end": 1
+    },
+    "timelinePreview": [
+      {
+        "index": 4,
+        "type": "mcp_end",
+        "title": "tools/list",
+        "detail": ""
+      },
+      {
+        "index": 11,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "The user wants to analyze the 5xx error rate for the `/api/login` endpoint over the last hour. I need to follow a structured process: 1. Parse the user request to extract parameters. 2. Load and parse the raw logs. 3. Filter the logs based on the target path and status code range (5xx). 4. Compute the required metrics (error rate). 5. Check for anomalies and gather context (service context, runbook). 6. Generate the final report.\n\nFirst, I will use `parse_user_request` to confirm the parameters."
+      },
+      {
+        "index": 15,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze the 5xx error rate for the `/api/login` endpoint over the last hour. The state indicates the raw logs are available at `/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log` and the format is `nginx_combined`. The first step is to load and parse the raw logs into structured records."
+      },
+      {
+        "index": 16,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 17,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 21,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available and the request parameters have been extracted. The next logical steps are to load the raw logs, parse them, filter them based on the target path and 5xx status code, compute the required metrics (error rate), and then check for anomalies and gather context."
+      },
+      {
+        "index": 22,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 23,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 27,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available and the request has been parsed. The next logical steps are to load, parse, and then filter the logs to isolate the relevant records before computing metrics."
+      },
+      {
+        "index": 28,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 29,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 33,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available and the request has been parsed. The next steps are to load, parse, and then filter the logs to isolate the relevant records before computing metrics. I will start by loading the raw log file."
+      },
+      {
+        "index": 34,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 35,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 39,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available, and the request has been parsed. The next steps are to load, parse, and then filter the logs to focus on the specific endpoint and error range (5xx). I will start by loading the raw log file."
+      },
+      {
+        "index": 40,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 41,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 45,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available and the request has been parsed. The next logical steps are to load, parse, and then filter the logs to isolate the relevant records before computing metrics. I will start by loading the raw log file."
+      },
+      {
+        "index": 46,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 47,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 51,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available, and the request parameters have been extracted. The next logical steps are to parse the raw logs, filter them based on the target path and 5xx status code, and then compute the required metrics (error rate)."
+      },
+      {
+        "index": 52,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 53,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 57,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. I have already parsed the user request and have the necessary log source information. The next steps are to load, parse, and filter the logs to isolate the relevant records, and then compute the error rate metrics. Since the state shows `filteredRecordCount: 0`, I must first ensure the logs are loaded and parsed correctly, and then filter them."
+      },
+      {
+        "index": 58,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 59,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 63,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows that the user request has been parsed, and the log source is available. The next logical steps are to load the raw logs, parse them, filter them based on the target path and 5xx status codes, compute the required metrics (error rate), and then analyze the results. I will start by loading the raw log file."
+      },
+      {
+        "index": 64,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 65,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 70,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 76,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 79,
+        "type": "final_output",
+        "title": "final_output",
+        "detail": "## Summary\nThe analysis for the 5xx error rate on the `/api/login` endpoint over the last hour could not be completed. The process terminated due to exceeding the maximum allowed ReAct steps. Consequently, no quantitative metrics, anomalies, or contextual information (RAG/MCP) were successfully retrieved or analyzed.\n\n## Key Metrics\n| Metric | Value | Notes |\n| :--- | :--- | :--- |\n| Parse Error Count | 0 | This is the only metric reported in the state. |\n| 5xx Error Rate | N/A | The requested error rate could not be calculated due to process failure. |\n\n## Anomalies\nNo anomalies were detected or reported in the current state.\n\n## Evidence\nNo specific log lines or metric references were captured during this analysis run. The raw logs contained 100 lines, but the analysis failed before processing them into actionable evidence.\n\n## RAG Context\nNo runbook context was retrieved.\n\n## MCP Context\nNo service context (ownership, SLOs, or deployments) was retrieved.\n\n## Likely Causes\nNo likely "
+      }
+    ],
+    "createdAt": 1779195155.6015491,
+    "updatedAt": 1779195155.60155
   }
 }

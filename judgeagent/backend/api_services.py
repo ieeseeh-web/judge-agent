@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from judgeagent.reference.agent.weblog_agent.fixtures import fixtures
 from judgeagent.reference.agent.weblog_agent.graph import WebLogAnalysisAgent
+from judgeagent.reference.agent.weblog_agent.llm import LLMClient as WeblogLLMClient, LLMConfig as WeblogLLMConfig
 from judgeagent.reference.agent.weblog_agent.trace import TraceLogger
 from judgeagent.reference.agent.weblog_agent.prompts import OUTPUT_CONTRACT, REACT_PROTOCOL, SYSTEM_PROMPT, TOOL_POLICY
 
@@ -29,6 +30,33 @@ from .api_store_sqlite import get_store as _get_store
 def _store() -> ApiStore:
     """환경변수 USE_SQLITE_STORE=1 이면 SQLite, 아니면 파일 기반 store 반환."""
     return _get_store()
+
+
+def _make_weblog_llm_client(model_id: Optional[str]) -> Optional[WeblogLLMClient]:
+    """weblog_agent 호환 LLM 클라이언트를 생성한다.
+
+    modelId가 지정되면 현재 환경 설정(.env / 환경변수)을 베이스로 모델만 교체한다.
+    judge_agent의 create_llm_client 대신 이 함수를 사용해야 WebLogAnalysisAgent와
+    인터페이스(enabled, config.sanitized 등)가 호환된다.
+    """
+    if not model_id:
+        return None  # WebLogAnalysisAgent가 자체 LLMClient()를 생성한다.
+    base = WeblogLLMConfig.from_env()
+    overridden = WeblogLLMConfig(
+        provider=base.provider,
+        model=model_id,
+        base_url=base.base_url,
+        chat_completions_path=base.chat_completions_path,
+        api_key_env=base.api_key_env,
+        api_key=base.api_key,
+        require_api_key=base.require_api_key,
+        auth_header=base.auth_header,
+        auth_scheme=base.auth_scheme,
+        temperature=base.temperature,
+        timeout_seconds=base.timeout_seconds,
+        extra_headers=base.extra_headers,
+    )
+    return WeblogLLMClient(config=overridden)
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -194,7 +222,7 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
     trace_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
-    llm_client = create_llm_client(model=request.modelId) if request.modelId else None
+    llm_client = _make_weblog_llm_client(request.modelId)
     logger = TraceLogger(trace_path, run_id=run_id)
     try:
         agent = WebLogAnalysisAgent(logger, fault=fault, use_llm=request.useLlm, llm=llm_client, prompt_overrides=request.promptOverrides)

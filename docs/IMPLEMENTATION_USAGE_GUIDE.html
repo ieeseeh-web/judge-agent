@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge Agent — 신규 기능 구현 사용법 가이드</title>
+<style>
+  :root {
+    --primary: #1677ff;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --purple: #7c3aed;
+    --bg: #f8fafc;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: #0f172a;
+    color: #e2e8f0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0;
+  }
+  .sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid #1e293b; }
+  .sidebar .logo h2 { font-size: 13px; color: #94a3b8; font-weight: 500; }
+  .sidebar .logo .ver { display: inline-block; margin-top: 4px; font-size: 11px; background: #1d4ed8; color: #fff; padding: 1px 8px; border-radius: 20px; }
+  .sidebar nav { padding: 16px 0; }
+  .sidebar nav a {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 20px; color: #94a3b8; text-decoration: none; font-size: 12.5px;
+    transition: all .15s;
+  }
+  .sidebar nav a:hover { color: #e2e8f0; background: #1e293b; }
+  .sidebar nav a.active { color: #fff; background: #1d4ed8; border-right: 3px solid #60a5fa; }
+  .sidebar nav .section-label {
+    padding: 12px 20px 4px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: #475569;
+  }
+  .main { flex: 1; min-width: 0; padding: 40px 48px 80px; max-width: 900px; }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    color: #fff;
+    padding: 40px 44px;
+    border-radius: 12px;
+    margin-bottom: 48px;
+  }
+  .hero .tag { display: inline-block; background: rgba(255,255,255,.15); font-size: 11px; padding: 2px 10px; border-radius: 20px; margin-bottom: 10px; }
+  .hero h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .hero p  { font-size: 14px; color: #94a3b8; }
+  .meta-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
+  .meta-row span { font-size: 12px; color: #64748b; }
+  .meta-row span strong { color: #cbd5e1; }
+
+  /* ── Feature block ── */
+  .feature-block {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+  .feat-header {
+    display: flex; align-items: flex-start; gap: 16px;
+    margin-bottom: 20px;
+  }
+  .feat-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .icon-blue   { background: #dbeafe; }
+  .icon-green  { background: #dcfce7; }
+  .icon-purple { background: #ede9fe; }
+  .icon-orange { background: #ffedd5; }
+  .icon-teal   { background: #ccfbf1; }
+  .feat-title h2 { font-size: 20px; font-weight: 700; }
+  .feat-title .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .feat-id { font-size: 11px; background: #f1f5f9; color: #475569; border: 1px solid var(--border); padding: 1px 8px; border-radius: 20px; font-weight: 600; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 18px;
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header.blue   { background: #eff6ff; color: #1d4ed8; }
+  .card-header.green  { background: #f0fdf4; color: #166534; }
+  .card-header.yellow { background: #fffbeb; color: #92400e; }
+  .card-header.red    { background: #fef2f2; color: #991b1b; }
+  .card-header.gray   { background: #f8fafc; color: #475569; }
+  .card-body { padding: 16px 18px; }
+
+  /* ── Detector card ── */
+  .detector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:700px){ .detector-grid { grid-template-columns: 1fr; } }
+  .detector-item {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    border-left: 4px solid var(--primary);
+  }
+  .detector-item.high   { border-left-color: #f97316; }
+  .detector-item.medium { border-left-color: #a855f7; }
+  .detector-item.critical { border-left-color: #dc2626; }
+  .detector-item h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .detector-item .sev {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 1px 7px; border-radius: 20px; margin-bottom: 6px;
+  }
+  .sev-critical { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+  .sev-high     { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+  .sev-medium   { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+  .detector-item p { font-size: 12px; color: var(--muted); }
+
+  /* ── Step list ── */
+  .steps { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .step-body p { font-size: 12.5px; color: var(--muted); }
+
+  /* ── Code block ── */
+  .code-block {
+    background: #0f172a;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 12px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block .lang-tag {
+    position: absolute; top: 10px; right: 14px;
+    font-size: 10px; color: #475569; font-weight: 600; text-transform: uppercase;
+  }
+  .code-block pre {
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #e2e8f0;
+    white-space: pre;
+  }
+  .code-block pre .kw  { color: #93c5fd; }
+  .code-block pre .str { color: #86efac; }
+  .code-block pre .cmt { color: #4b5563; font-style: italic; }
+  .code-block pre .num { color: #fdba74; }
+  .code-block pre .fn  { color: #c4b5fd; }
+
+  /* ── Env var ── */
+  .env-var { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; margin: 6px 0; }
+  .env-name { font-family: monospace; font-size: 12px; font-weight: 700; color: #1d4ed8; }
+  .env-value { font-family: monospace; font-size: 12px; color: #166534; }
+  .env-desc { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+  /* ── UI screenshot placeholder ── */
+  .ui-box {
+    background: #fff;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 12px 0;
+  }
+
+  /* ── Finding example ── */
+  .finding-example {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin: 8px 0;
+  }
+  .finding-example .f-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .finding-example .f-id { font-size: 11px; font-weight: 700; color: var(--muted); }
+  .finding-example .f-metric { font-size: 13px; font-weight: 700; }
+  .finding-example .f-body { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: 80px 1fr; gap: 4px 8px; }
+  .finding-example .f-body strong { color: #334155; }
+
+  /* ── Table ── */
+  .tbl-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  th { background: #1e3a5f; color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 10px 14px; text-align: left; white-space: nowrap; }
+  td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12.5px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #fafafa; }
+  code { font-family: monospace; font-size: 11.5px; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; color: #0f172a; }
+
+  /* ── Note / warning ── */
+  .note { border-left: 3px solid var(--primary); background: #eff6ff; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 12.5px; margin: 10px 0; }
+  .note.warn { border-left-color: #f59e0b; background: #fffbeb; }
+  .note.tip  { border-left-color: #22c55e; background: #f0fdf4; }
+  .note.crit { border-left-color: #dc2626; background: #fef2f2; }
+
+  /* ── Badge ── */
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; }
+  .badge-done   { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .badge-new    { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .badge-beta   { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* ── Footer ── */
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══ Sidebar ══════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="logo">
+    <h2>Judge Agent</h2>
+    <span class="ver">v0.4.0</span>
+  </div>
+  <nav>
+    <div class="section-label">신규 Detector</div>
+    <a href="#det-mismatch">tool_argument_mismatch</a>
+    <a href="#det-repeated">repeated_tool_call</a>
+    <a href="#det-hallucination">context_hallucination</a>
+    <div class="section-label">신규 Metric</div>
+    <a href="#metric">신규 메트릭 4개</a>
+    <div class="section-label">UI 기능</div>
+    <a href="#history-ui">Run 히스토리 UI</a>
+    <div class="section-label">인프라</div>
+    <a href="#sqlite">SQLite 저장소</a>
+    <a href="#cicd">GitHub Actions CI/CD</a>
+    <div class="section-label">참고</div>
+    <a href="#api-ref">API 레퍼런스</a>
+  </nav>
+</nav>
+
+<!-- ══ Main ══════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="tag">신규 구현 사용법 가이드</div>
+    <h1>Judge Agent — 신규 기능 사용법</h1>
+    <p>Phase 1~3에서 새로 구현된 Detector, 메트릭, UI, 인프라 기능의 상세 사용 방법을 안내합니다.</p>
+    <div class="meta-row">
+      <span><strong>작성일</strong> 2026-05-19</span>
+      <span><strong>버전</strong> v0.4.0</span>
+      <span><strong>범위</strong> F-101~103, F-108~109, F-201~202, F-301, F-303~305</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SECTION: 신규 Detector                                    -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="feature-block" id="det-mismatch">
+    <div class="feat-header">
+      <div class="feat-icon icon-orange">🎯</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>tool_argument_mismatch Detector</h2>
+          <span class="feat-id">F-101</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">Tool 호출 인자가 사용자 요청과 불일치하는 경우 감지</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header blue">📌 감지 조건</div>
+      <div class="card-body">
+        <div class="detector-grid">
+          <div class="detector-item high">
+            <span class="sev sev-high">HIGH</span>
+            <h4>Status 범위 불일치</h4>
+            <p>사용자가 5xx 분석을 요청했는데 <code>filter_log_records</code>의 <code>status_min/max</code>가 5xx 범위(500~599)를 포함하지 않는 경우.</p>
+          </div>
+          <div class="detector-item medium">
+            <span class="sev sev-medium">MEDIUM</span>
+            <h4>Path 필터 누락</h4>
+            <p>사용자 요청에 target endpoint가 명시되어 있는데 <code>filter_log_records</code>의 <code>path_pattern</code>이 <code>None</code>으로 호출된 경우.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header yellow">🧪 재현 방법 (테스트)</div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="lang-tag">bash</div>
+          <pre><span class="cmt"># drift-wrong-endpoint fixture로 재현</span>
+python3 -m judgeagent.reference.agent.weblog_agent.cli \
+  run-fixture drift-wrong-endpoint --no-llm
+
+<span class="cmt"># Judge Agent로 분석</span>
+python3 -m judgeagent.backend.cli analyze \
+  --trace artifacts/weblog-reference/drift-wrong-endpoint.jsonl</pre>
+        </div>
+        <div class="note">
+          <strong>Finding 확인:</strong> 분석 결과에서 <code>metric: "tool_argument_mismatch"</code>, <code>severity: "high"</code> 항목을 확인합니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header gray">📄 Finding 예시</div>
+      <div class="card-body">
+        <div class="finding-example">
+          <div class="f-head">
+            <span class="f-id">JD-011</span>
+            <span class="sev sev-high">HIGH</span>
+            <span class="f-metric">tool_argument_mismatch</span>
+            <code>tool</code>
+          </div>
+          <div class="f-body">
+            <strong>Expected</strong><span>filter_log_records status range should cover 500~599 for 5xx analysis.</span>
+            <strong>Actual</strong><span>Actual range [400, 499] does not cover 5xx status codes.</span>
+            <strong>Evidence</strong><span>user_input contains '5xx' request · filter_log_records called with status_min=400, status_max=499</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ repeated_tool_call ══ -->
+  <div class="feature-block" id="det-repeated">
+    <div class="feat-header">
+      <div class="feat-icon icon-purple">🔄</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>repeated_tool_call Detector</h2>
+          <span class="feat-id">F-102</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">동일 Tool 반복 호출 / ReAct 루프 감지</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header blue">📌 감지 조건</div>
+      <div class="card-body">
+        <div class="detector-grid">
+          <div class="detector-item high">
+            <span class="sev sev-high">HIGH/MEDIUM</span>
+            <h4>단순 반복 호출</h4>
+            <p>동일 tool이 임계값(<code>repeated_tool_call_threshold: 5</code>) 이상 호출된 경우. 5~9회: MEDIUM, 10회+: HIGH.</p>
+          </div>
+          <div class="detector-item high">
+            <span class="sev sev-high">HIGH</span>
+            <h4>완전 동일 패턴 반복</h4>
+            <p>동일한 thought + action 조합이 3회 이상 반복되어 에이전트가 진행하지 못하고 루프에 빠진 경우.</p>
+          </div>
+        </div>
+        <div class="note warn" style="margin-top:12px">
+          <strong>임계값 조정:</strong> <code>judgeagent/judge_agent/config/detector_rules.json</code>의 <code>repeated_tool_call_threshold</code> 값을 수정하면 임계값을 변경할 수 있습니다. (기본값: 5)
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header gray">⚙️ 설정 변경</div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="lang-tag">json</div>
+          <pre><span class="cmt">// detector_rules.json</span>
+{
+  <span class="str">"reference_weblog"</span>: {
+    <span class="str">"repeated_tool_call_threshold"</span>: <span class="num">5</span>,   <span class="cmt">// 기본값: 5회 이상이면 finding 생성</span>
+    ...
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ context_hallucination ══ -->
+  <div class="feature-block" id="det-hallucination">
+    <div class="feat-header">
+      <div class="feat-icon icon-blue">🔍</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>context_hallucination Detector</h2>
+          <span class="feat-id">F-103</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">Final output 수치가 Tool 실제 산출값과 불일치할 때 감지</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header blue">📌 동작 원리</div>
+      <div class="card-body">
+        <ol class="steps">
+          <li class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>Tool 출력 수집</strong>
+              <p><code>compute_log_metrics</code> tool_end 이벤트에서 <code>error_rate</code>, <code>request_count</code>, <code>error_count</code> 등 수치를 수집합니다.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Final output 수치 추출</strong>
+              <p>최종 보고서에서 정규식으로 동일 지표 수치를 추출합니다 (퍼센트/소수 두 형태 모두 처리).</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>오차 비교</strong>
+              <p>허용 오차(<code>metric_hallucination_tolerance: 0.1</code>)를 초과하는 차이가 있으면 <code>critical</code> finding을 생성합니다.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="note crit" style="margin-top:12px">
+          <strong>예시:</strong> Tool이 <code>error_rate: 0.15</code>(15%)를 반환했는데 Final output에 <code>error_rate: 99.99%</code>가 적혀 있으면 CRITICAL finding 발생.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header yellow">🧪 재현 방법</div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="lang-tag">bash</div>
+          <pre><span class="cmt"># drift-metric-hallucination fixture로 재현</span>
+python3 -m judgeagent.reference.agent.weblog_agent.cli \
+  run-fixture drift-metric-hallucination --no-llm
+
+python3 -m judgeagent.backend.cli analyze \
+  --trace artifacts/weblog-reference/drift-metric-hallucination.jsonl \
+  --json /tmp/result.json
+
+<span class="cmt"># context_hallucination finding 확인</span>
+python3 -c <span class="str">"import json; r=json.load(open('/tmp/result.json')); [print(f['metric'], f['severity']) for f in r['findings']]"</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ 신규 메트릭 ══ -->
+  <div class="feature-block" id="metric">
+    <div class="feat-header">
+      <div class="feat-icon icon-green">📊</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>신규 메트릭 4개</h2>
+          <span class="feat-id">F-108/109</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">metrics.json에 추가된 신규 메트릭 정의</div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>메트릭명</th><th>카테고리</th><th>측정 방법</th><th>관련 Detector</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>task_completion_rate</code></td>
+            <td>Final Output</td>
+            <td>필수 섹션 포함 여부 + final_output 존재 여부 rule 검사</td>
+            <td><code>output_contract</code></td>
+          </tr>
+          <tr>
+            <td><code>tool_argument_correctness</code></td>
+            <td>Tool Use</td>
+            <td>status 범위 · path_pattern 일치 여부 rule 검사</td>
+            <td><code>tool_argument_mismatch</code></td>
+          </tr>
+          <tr>
+            <td><code>repeated_tool_call</code></td>
+            <td>Tool Use</td>
+            <td>tool 호출 빈도 카운터 (임계값: 5회)</td>
+            <td><code>repeated_tool_call</code></td>
+          </tr>
+          <tr>
+            <td><code>context_hallucination</code></td>
+            <td>Final Output</td>
+            <td>tool output vs final output 수치 비교 (오차 허용치: ±10%)</td>
+            <td><code>context_hallucination</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      메트릭 정의 파일: <code>judgeagent/judge_agent/config/metrics.json</code> → <code>"new_metrics"</code> 배열
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ Run History UI ══ -->
+  <div class="feature-block" id="history-ui">
+    <div class="feat-header">
+      <div class="feat-icon icon-teal">📋</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>Run 히스토리 조회 UI</h2>
+          <span class="feat-id">F-201/202</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">과거 Reference Run을 필터링하고 Judge/Baseline에 재사용</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header blue">🖥️ 화면 접근 방법</div>
+      <div class="card-body">
+        <ol class="steps">
+          <li class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>좌측 Reference Agent 패널 상단 탭 확인</strong>
+              <p>패널 상단에 <strong>Chat</strong> | <strong>Run History</strong> 탭이 표시됩니다.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Run History 탭 클릭</strong>
+              <p>저장된 모든 Reference Run 목록이 최신순으로 표시됩니다.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>필터 적용</strong>
+              <p>상단 필터 바에서 상태(Succeeded/Failed), Fixture ID, 모델 ID로 목록을 좁힐 수 있습니다.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <strong>액션 버튼 사용</strong>
+              <p>각 run 행 오른쪽의 🔬 버튼으로 Judge, 🚩 버튼으로 Set Baseline을 직접 실행합니다.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="note tip" style="margin-top:12px">
+          <strong>Judge 버튼 클릭 시:</strong> 해당 run이 현재 run으로 설정되고 Chat 탭으로 전환됩니다. 헤더의 "Judge this trace" 버튼을 클릭해 분석을 시작하세요.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header gray">🔌 API 필터 파라미터</div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="lang-tag">http</div>
+          <pre>GET /api/reference/runs
+  ?fixture=normal-login-error-spike   <span class="cmt"># fixture ID 필터</span>
+  &modelId=gemma4:latest              <span class="cmt"># 모델 필터</span>
+  &status=succeeded                  <span class="cmt"># 상태 필터 (succeeded | failed)</span>
+  &from=1748000000                   <span class="cmt"># Unix timestamp (from)</span>
+  &to=1748100000                     <span class="cmt"># Unix timestamp (to)</span>
+  &limit=50                          <span class="cmt"># 최대 반환 수 (기본: 50)</span></pre>
+        </div>
+        <div class="code-block">
+          <div class="lang-tag">bash</div>
+          <pre><span class="cmt"># 예시: succeeded 상태의 gemma4:latest 실행 목록</span>
+curl <span class="str">"http://localhost:19001/api/reference/runs?status=succeeded&modelId=gemma4:latest"</span> \
+  | python3 -m json.tool | head -50</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ SQLite ══ -->
+  <div class="feature-block" id="sqlite">
+    <div class="feat-header">
+      <div class="feat-icon icon-green">🗄️</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>SQLite 기반 저장소</h2>
+          <span class="feat-id">F-301</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">기존 파일 기반 registry.json을 SQLite로 전환 — 환경변수 1개로 즉시 전환</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header blue">⚡ 즉시 활성화</div>
+      <div class="card-body">
+        <div class="env-var">
+          <span class="env-name">USE_SQLITE_STORE</span>
+          <span>=</span>
+          <span class="env-value">1</span>
+          <span class="env-desc">SQLite 모드 활성화 (기본: 파일 기반)</span>
+        </div>
+        <div class="code-block">
+          <div class="lang-tag">bash</div>
+          <pre><span class="cmt"># .env 파일에 추가 또는 시작 시 환경변수 지정</span>
+USE_SQLITE_STORE=<span class="num">1</span> bash start.sh
+
+<span class="cmt"># 또는 .env 파일</span>
+echo <span class="str">"USE_SQLITE_STORE=1"</span> >> .env</pre>
+        </div>
+        <div class="note">
+          SQLite DB 파일 위치: <code>artifacts/frontend-api/judge_agent.db</code><br>
+          WAL 모드로 동작하므로 동시 쓰기 충돌이 발생하지 않습니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header yellow">📦 기존 데이터 마이그레이션</div>
+      <div class="card-body">
+        <p style="font-size:13px;margin-bottom:10px;">기존 <code>artifacts/</code>의 <code>registry.json</code> 파일들을 SQLite로 일괄 임포트합니다.</p>
+        <div class="code-block">
+          <div class="lang-tag">bash</div>
+          <pre><span class="cmt"># 1. 마이그레이션 실행 (기존 파일 그대로 유지됨)</span>
+python3 -m judgeagent.backend.api_store_sqlite migrate
+
+<span class="cmt"># 출력 예시:</span>
+<span class="cmt">#   reference_runs: 23개 임포트 완료</span>
+<span class="cmt">#   analyses: 8개 임포트 완료</span>
+<span class="cmt">#   judge_sessions: 5개 임포트 완료</span>
+<span class="cmt">#   마이그레이션 완료: 총 36개 레코드 → artifacts/frontend-api/judge_agent.db</span>
+
+<span class="cmt"># 2. SQLite 모드로 재시작</span>
+USE_SQLITE_STORE=<span class="num">1</span> bash start.sh</pre>
+        </div>
+        <div class="note warn">
+          마이그레이션은 기존 파일을 삭제하지 않습니다. SQLite 모드로 전환 후 정상 동작이 확인되면 기존 <code>registry.json</code>을 수동으로 정리하세요.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header gray">📊 파일 기반 vs SQLite 비교</div>
+      <div class="card-body">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>항목</th><th>파일 기반 (기본)</th><th>SQLite (USE_SQLITE_STORE=1)</th></tr></thead>
+            <tbody>
+              <tr><td>동시 쓰기 안전성</td><td>❌ uuid로 임시 완화</td><td>✅ WAL 모드, 트랜잭션</td></tr>
+              <tr><td>쿼리/필터 성능</td><td>메모리 풀 로드 후 필터</td><td>SQL WHERE 절로 효율적</td></tr>
+              <tr><td>저장 위치</td><td><code>artifacts/*/registry.json</code></td><td><code>artifacts/frontend-api/judge_agent.db</code></td></tr>
+              <tr><td>백업</td><td>파일 복사</td><td>파일 복사 (단일 .db 파일)</td></tr>
+              <tr><td>추가 설치</td><td>없음</td><td>없음 (Python 표준 sqlite3)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ CI/CD ══ -->
+  <div class="feature-block" id="cicd">
+    <div class="feat-header">
+      <div class="feat-icon icon-blue">🔁</div>
+      <div class="feat-title">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <h2>GitHub Actions CI/CD 통합</h2>
+          <span class="feat-id">F-303/305</span>
+          <span class="badge badge-done">✅ 완료</span>
+        </div>
+        <div class="sub">PR 머지 전 Prompt Regression 자동 실행 및 PR 코멘트 게시</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header blue">📁 워크플로 파일</div>
+      <div class="card-body">
+        <p style="font-size:13px;margin-bottom:8px;">파일 위치: <code>.github/workflows/judge-regression.yml</code></p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>단계</th><th>동작</th></tr></thead>
+            <tbody>
+              <tr><td>Step 1</td><td>코드 체크아웃 (이전 커밋 포함)</td></tr>
+              <tr><td>Step 2~3</td><td>Python 설치 + <code>pip install -e '.[api]'</code></td></tr>
+              <tr><td>Step 4</td><td>이전 커밋 기준으로 <strong>Baseline trace</strong> 생성</td></tr>
+              <tr><td>Step 5</td><td>현재 PR 코드 기준으로 <strong>Candidate trace</strong> 생성</td></tr>
+              <tr><td>Step 6</td><td><code>compare-prompt-regression</code> 실행 → report.md + result.json 생성</td></tr>
+              <tr><td>Step 7</td><td>GitHub Step Summary에 결과 요약 출력</td></tr>
+              <tr><td>Step 8</td><td><strong>PR 코멘트</strong>에 Gate / Score / Model 변경 / Findings 게시</td></tr>
+              <tr><td>Step 9</td><td>artifact 저장 (14일 보관)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header green">🚀 설정 방법</div>
+      <div class="card-body">
+        <ol class="steps">
+          <li class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>워크플로 활성화 확인</strong>
+              <p>GitHub 저장소 → Actions 탭에서 "Judge Agent — Prompt Regression" 워크플로가 표시되는지 확인합니다.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Secrets 설정 (LLM 사용 시)</strong>
+              <p>Repository Settings → Secrets → <code>OPENAI_API_KEY</code>를 등록합니다. Deterministic 모드는 API Key 불필요.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>Variables 설정 (선택)</strong>
+              <p>Repository Settings → Variables → <code>JUDGE_LLM_PROVIDER</code>, <code>JUDGE_LLM_MODEL</code> 설정. 미설정 시 <code>none</code>(deterministic) 모드.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <strong>PR 생성 시 자동 실행</strong>
+              <p><code>main</code> / <code>master</code> 브랜치 대상 PR이 생성되면 자동으로 실행됩니다. 프롬프트·에이전트 코드·Judge 설정 파일 변경 시에만 트리거됩니다.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header yellow">🖐️ 수동 실행</div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="lang-tag">bash</div>
+          <pre><span class="cmt"># GitHub CLI로 수동 실행</span>
+gh workflow run judge-regression.yml \
+  -f fixture=normal-login-error-spike \
+  -f fail_on_regression=true
+
+<span class="cmt"># 실행 결과 확인</span>
+gh run list --workflow=judge-regression.yml</pre>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:8px;">또는 GitHub 웹 → Actions → Judge Agent — Prompt Regression → Run workflow</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header gray">📝 PR 코멘트 예시</div>
+      <div class="card-body">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;font-size:13px;">
+          <p style="font-weight:700;margin-bottom:8px;">🤖 Judge Agent — Prompt Regression</p>
+          <p style="color:#166534;font-weight:700;margin-bottom:12px;">✅ STABLE — Regression 없음</p>
+          <table style="width:100%;font-size:12px;border-collapse:collapse;">
+            <tr style="border-bottom:1px solid #f0f0f0;"><th style="text-align:left;padding:4px 8px;background:#f8fafc;">항목</th><th style="padding:4px 8px;background:#f8fafc;">Baseline</th><th style="padding:4px 8px;background:#f8fafc;">Candidate</th></tr>
+            <tr style="border-bottom:1px solid #f0f0f0;"><td style="padding:4px 8px;">Gate</td><td style="padding:4px 8px;text-align:center;"><code>pass</code></td><td style="padding:4px 8px;text-align:center;"><code>pass</code></td></tr>
+            <tr style="border-bottom:1px solid #f0f0f0;"><td style="padding:4px 8px;">Score</td><td style="padding:4px 8px;text-align:center;">100</td><td style="padding:4px 8px;text-align:center;">98</td></tr>
+            <tr><td style="padding:4px 8px;">Regression Score</td><td style="padding:4px 8px;text-align:center;">—</td><td style="padding:4px 8px;text-align:center;font-weight:700;">95</td></tr>
+          </table>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;">Fixture: <code>normal-login-error-spike</code> | <a href="#" style="color:#1677ff;">워크플로 실행</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header red">⚠️ Regression 발생 시</div>
+      <div class="card-body">
+        <p style="font-size:13px;margin-bottom:8px;">다음 조건 중 하나라도 해당하면 CI가 실패 처리됩니다 (<code>fail_on_regression=true</code>일 때):</p>
+        <ul style="list-style:disc;padding-left:20px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;">
+          <li>candidate gate가 baseline gate보다 악화됨 (<code>gateRegressed: true</code>)</li>
+          <li>Regression Score &lt; 85</li>
+          <li>새로운 high/critical finding 발생</li>
+        </ul>
+        <div class="note crit" style="margin-top:10px">
+          CI 실패 시 PR 코멘트에 원인 finding이 상세 표시됩니다. Finding을 검토하고 프롬프트 또는 에이전트 코드를 수정한 뒤 재실행하세요.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ══ API Reference ══ -->
+  <div class="feature-block" id="api-ref">
+    <div class="feat-header">
+      <div class="feat-icon icon-purple">📡</div>
+      <div class="feat-title">
+        <h2>신규/변경 API 레퍼런스</h2>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Endpoint</th><th>변경 내용</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/reference/runs</code></td>
+            <td>필터 파라미터 추가: <code>fixture</code>, <code>modelId</code>, <code>status</code>, <code>from</code>, <code>to</code>, <code>limit</code>. 응답에 <code>total</code> 카운트 추가.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/models</code></td>
+            <td><strong>신규.</strong> Ollama 실행 중 모델 + llm_profiles 설정 모델 통합 목록 반환. <code>{ models: [{id, provider, source, size?}], defaultModel }</code></td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/reference/runs</code></td>
+            <td>응답 <code>run</code>에 <code>modelId</code> 필드 추가 (실제 사용된 LLM 모델명).</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/prompt-regressions</code></td>
+            <td>응답 <code>summary</code>에 <code>baselineModel</code>, <code>candidateModel</code>, <code>modelChanged</code> 필드 추가.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-header gray">📋 전체 API 엔드포인트 목록</div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="lang-tag">text</div>
+          <pre>GET  /api/health
+GET  /api/config
+GET  /api/metrics
+GET  /api/models                          <span class="cmt">← NEW</span>
+GET  /api/reference/fixtures
+GET  /api/reference/prompts
+POST /api/reference/runs
+GET  /api/reference/runs                  <span class="cmt">← 필터 파라미터 추가</span>
+GET  /api/reference/runs/{run_id}
+GET  /api/reference/runs/{run_id}/trace
+POST /api/analyses
+GET  /api/analyses
+GET  /api/analyses/{analysis_id}
+POST /api/prompt-regressions              <span class="cmt">← modelChanged 필드 추가</span>
+GET  /api/prompt-regressions
+GET  /api/prompt-regressions/{id}
+POST /api/judge/sessions
+GET  /api/judge/sessions
+GET  /api/judge/sessions/{session_id}
+POST /api/judge/sessions/{id}/messages
+
+<span class="cmt">Swagger UI: http://localhost:19001/docs</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Judge Agent Project — 신규 기능 사용법 가이드</span>
+    <span>문서 경로: <code>docs/IMPLEMENTATION_USAGE_GUIDE.html</code></span>
+  </div>
+
+</main>
+</div>
+
+<script>
+  // 사이드바 활성 링크 스크롤 추적
+  const sections = document.querySelectorAll('.feature-block[id]');
+  const links = document.querySelectorAll('.sidebar nav a[href^="#"]');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    links.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  });
+</script>
+</body>
+</html>

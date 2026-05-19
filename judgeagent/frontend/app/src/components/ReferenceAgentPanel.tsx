@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import type { PromptOverrides, ReferencePromptDefaults, ReferenceRun } from '../types/judge';
-import { Card, Select, Button, Space, Typography, Tag, Modal, Input, Tabs, Tooltip, Popconfirm, Empty, Spin, Collapse } from 'antd';
+import { Card, Select, Button, Space, Typography, Tag, Modal, Input, Tabs, Tooltip, Popconfirm, Empty, Spin, Collapse, Switch, Badge, Divider as AntDivider } from 'antd';
 import {
   ExperimentOutlined, BranchesOutlined, FlagOutlined, EditOutlined,
   DeleteOutlined, HistoryOutlined, RollbackOutlined, RobotOutlined,
   UserOutlined, SettingOutlined, SendOutlined, UnorderedListOutlined,
-  MessageOutlined,
+  MessageOutlined, ReloadOutlined, ApiOutlined,
 } from '@ant-design/icons';
 import { usePromptHistory } from '../hooks/usePromptHistory';
 import type { PromptHistoryEntry } from '../hooks/usePromptHistory';
+import { useModelSettings } from '../hooks/useModelSettings';
+import type { ModelInfo } from '../hooks/useModelSettings';
 import { RunHistoryPanel } from './RunHistoryPanel';
 import * as api from '../api/judgeClient';
 
@@ -178,6 +180,41 @@ function AgentBubble({ turn }: { turn: RefChatTurn }) {
   );
 }
 
+function ModelRow({ model, enabled, onToggle }: { model: ModelInfo; enabled: boolean; onToggle: (v: boolean) => void }) {
+  const PROVIDER_COLOR: Record<string, string> = {
+    ollama: '#52c41a', openai: '#1677ff', 'openai-compatible': '#722ed1',
+    vllm: '#fa8c16', lmstudio: '#eb2f96', mock: '#8c8c8c', none: '#bfbfbf',
+  };
+  const color = PROVIDER_COLOR[model.provider] ?? '#8c8c8c';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '7px 10px', borderRadius: 6,
+      background: enabled ? '#fff' : '#f8f9fa',
+      border: `1px solid ${enabled ? '#e2e8f0' : '#f0f0f0'}`,
+      opacity: enabled ? 1 : 0.55,
+      transition: 'all .15s',
+    }}>
+      <Switch size="small" checked={enabled} onChange={onToggle} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <Text style={{ fontSize: '0.82rem', fontWeight: enabled ? 600 : 400 }}>{model.id}</Text>
+          {model.size && (
+            <Tag style={{ margin: 0, fontSize: '0.65rem' }}>{model.size}</Tag>
+          )}
+          {model.quantization && (
+            <Tag style={{ margin: 0, fontSize: '0.62rem', color: '#8c8c8c' }}>{model.quantization}</Tag>
+          )}
+        </div>
+        <Text style={{ fontSize: '0.68rem', color }}>
+          {model.provider}
+          {model.source === 'running' && <span style={{ color: '#52c41a', marginLeft: 4 }}>● 실행 중</span>}
+        </Text>
+      </div>
+    </div>
+  );
+}
+
 export function ReferenceAgentPanel({
   referenceRun, onRun, onJudge, onSetBaseline, onSetBaselineFromRun, onComparePromptRegression,
   baselineRun, defaultPrompts, isLoading,
@@ -188,8 +225,12 @@ export function ReferenceAgentPanel({
   const [isRunning, setIsRunning] = useState(false);
   const [selectedMode, setSelectedMode] = useState('hybrid');
   const [selectedModelId, setSelectedModelId] = useState<string | undefined>(undefined);
-  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([]);
+  const [allModels, setAllModels] = useState<ModelInfo[]>([]);
+  const [defaultModel, setDefaultModel] = useState('');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
   const [fixtures, setFixtures] = useState<FixtureOption[]>([]);
+  const { isEnabled, setEnabled, enableAll, disableAll } = useModelSettings();
 
   const [promptModalOpen, setPromptModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'edit' | 'history'>('edit');
@@ -217,24 +258,31 @@ export function ReferenceAgentPanel({
     load();
   }, []);
 
-  useEffect(() => {
+  const loadModels = () => {
+    setIsLoadingModels(true);
     api.getModels()
-      .then(({ models, defaultModel }) => {
-        const opts = models.map((m: any) => ({
-          value: m.id,
-          label: m.source === 'running'
-            ? `${m.id}${m.size ? ` (${m.size})` : ''}`
-            : m.id,
-        }));
-        setModelOptions([
-          { value: '', label: `기본값 (${defaultModel})` },
-          ...opts,
-        ]);
+      .then(({ models, defaultModel: dm }) => {
+        setAllModels(models as ModelInfo[]);
+        setDefaultModel(dm);
       })
-      .catch(() => {
-        setModelOptions([{ value: '', label: '기본값' }]);
-      });
-  }, []);
+      .catch(() => setAllModels([]))
+      .finally(() => setIsLoadingModels(false));
+  };
+
+  useEffect(() => { loadModels(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 활성화된 모델만 드롭다운에 표시
+  const modelOptions = [
+    { value: '', label: `기본값${defaultModel ? ` (${defaultModel})` : ''}` },
+    ...allModels
+      .filter(m => isEnabled(m.id))
+      .map(m => ({
+        value: m.id,
+        label: m.source === 'running'
+          ? `${m.id}${m.size ? ` (${m.size})` : ''}`
+          : m.id,
+      })),
+  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -349,13 +397,32 @@ export function ReferenceAgentPanel({
           />
 
           <Tooltip title="실행할 LLM 모델을 선택합니다. '기본값'은 서버 설정 모델을 사용합니다.">
-            <Select
+            <Badge count={allModels.filter(m => !isEnabled(m.id)).length} size="small" offset={[-4, 2]}>
+              <Select
+                size="small"
+                style={{ width: 200 }}
+                value={selectedModelId ?? ''}
+                onChange={v => setSelectedModelId(v || undefined)}
+                options={modelOptions}
+                loading={isLoadingModels && allModels.length === 0}
+              />
+            </Badge>
+          </Tooltip>
+
+          <Tooltip title="모델 목록 새로고침">
+            <Button
               size="small"
-              style={{ width: 200 }}
-              value={selectedModelId ?? ''}
-              onChange={v => setSelectedModelId(v || undefined)}
-              options={modelOptions}
-              loading={modelOptions.length === 0}
+              icon={<ReloadOutlined spin={isLoadingModels} />}
+              onClick={loadModels}
+              disabled={isLoadingModels}
+            />
+          </Tooltip>
+
+          <Tooltip title="사용할 모델 관리">
+            <Button
+              size="small"
+              icon={<ApiOutlined />}
+              onClick={() => setModelSettingsOpen(true)}
             />
           </Tooltip>
 
@@ -499,6 +566,70 @@ export function ReferenceAgentPanel({
           </Button>
         </div>
       </div>
+
+      {/* ── Model settings modal ── */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ApiOutlined />
+            <span>모델 관리</span>
+            <Button
+              size="small"
+              icon={<ReloadOutlined spin={isLoadingModels} />}
+              onClick={loadModels}
+              disabled={isLoadingModels}
+              style={{ marginLeft: 8 }}
+            >
+              새로고침
+            </Button>
+          </div>
+        }
+        open={modelSettingsOpen}
+        onCancel={() => setModelSettingsOpen(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Space>
+              <Button size="small" onClick={() => enableAll(allModels.map(m => m.id))}>전체 활성화</Button>
+              <Button size="small" danger onClick={() => disableAll(allModels.map(m => m.id))}>전체 비활성화</Button>
+            </Space>
+            <Button type="primary" onClick={() => setModelSettingsOpen(false)}>닫기</Button>
+          </div>
+        }
+        width={520}
+        destroyOnHidden
+      >
+        {isLoadingModels && allModels.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
+        ) : allModels.length === 0 ? (
+          <Empty description="모델 정보를 불러올 수 없습니다" />
+        ) : (
+          <div style={{ maxHeight: 480, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* 실행 중인 모델 (Ollama 등) */}
+            {allModels.some(m => m.source === 'running') && (
+              <>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#52c41a', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '6px 2px 2px' }}>
+                  ● 실행 중 (Ollama)
+                </div>
+                {allModels.filter(m => m.source === 'running').map(m => (
+                  <ModelRow key={m.id} model={m} enabled={isEnabled(m.id)} onToggle={v => setEnabled(m.id, v)} />
+                ))}
+                <AntDivider style={{ margin: '8px 0' }} />
+              </>
+            )}
+
+            {/* 설정에 등록된 모델 */}
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '2px 2px' }}>
+              설정 (config)
+            </div>
+            {allModels.filter(m => m.source !== 'running').map(m => (
+              <ModelRow key={`${m.provider}-${m.id}`} model={m} enabled={isEnabled(m.id)} onToggle={v => setEnabled(m.id, v)} />
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 10, padding: '8px 0 0', borderTop: '1px solid #f0f0f0', fontSize: '0.72rem', color: '#94a3b8' }}>
+          활성화된 모델만 드롭다운에 표시됩니다. 설정은 브라우저에 저장됩니다.
+        </div>
+      </Modal>
 
       {/* ── Prompt edit modal ── */}
       <Modal
