@@ -403,5 +403,51 @@
       "ref_agent_priority": null
     }
   ],
-  "reference_weblog": {}
+  "reference_weblog": {},
+  "new_metrics": [
+    {
+      "name": "task_completion_rate",
+      "category": "Final Output / Completion",
+      "measurement_method": "rule (output sections + final_output presence)",
+      "value_type": "0.0 ~ 1.0",
+      "description": "에이전트가 사용자 요청을 완료하고 필수 섹션이 포함된 final output을 생성했는지.",
+      "severity": "Critical",
+      "implemented": true,
+      "detector": "output_contract",
+      "ref_agent_priority": 1
+    },
+    {
+      "name": "tool_argument_correctness",
+      "category": "Tool Use",
+      "measurement_method": "rule (schema + context match)",
+      "value_type": "pass/fail",
+      "description": "tool 호출 인자가 사용자 요청 컨텍스트와 일치하는지 (status 범위, path 등).",
+      "severity": "High",
+      "implemented": true,
+      "detector": "tool_argument_mismatch",
+      "ref_agent_priority": 2
+    },
+    {
+      "name": "repeated_tool_call",
+      "category": "Tool Use",
+      "measurement_method": "rule (call frequency counter)",
+      "value_type": "pass/fail",
+      "description": "동일 tool이 임계값 이상 반복 호출되어 ReAct 루프 버그를 나타내는지.",
+      "severity": "High",
+      "implemented": true,
+      "detector": "repeated_tool_call",
+      "ref_agent_priority": 3
+    },
+    {
+      "name": "context_hallucination",
+      "category": "Final Output / Completion",
+      "measurement_method": "rule (tool output vs final output comparison)",
+      "value_type": "pass/fail",
+      "description": "final output의 수치/지표가 tool이 실제 산출한 값과 일치하는지.",
+      "severity": "Critical",
+      "implemented": true,
+      "detector": "context_hallucination",
+      "ref_agent_priority": 4
+    }
+  ]
 }

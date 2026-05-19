@@ -23,6 +23,12 @@ from judgeagent.judge_agent.core.metrics import list_metrics
 from judgeagent.judge_agent.llm.clients import create_llm_client
 from .api_models import ApiError, AnalysisRequest, JudgeMessageRequest, JudgeSessionRequest, PromptRegressionRequest, ReferenceRunRequest
 from .api_store import ApiStore, make_id
+from .api_store_sqlite import get_store as _get_store
+
+
+def _store() -> ApiStore:
+    """환경변수 USE_SQLITE_STORE=1 이면 SQLite, 아니면 파일 기반 store 반환."""
+    return _get_store()
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -225,8 +231,27 @@ def run_reference_agent(request: ReferenceRunRequest, store: Optional[ApiStore] 
     return {"run": item}
 
 
-def list_reference_runs(store: Optional[ApiStore] = None) -> Dict[str, Any]:
-    return {"runs": (store or ApiStore()).list("reference_runs")}
+def list_reference_runs(
+    store: Optional[ApiStore] = None,
+    fixture: Optional[str] = None,
+    model_id: Optional[str] = None,
+    status: Optional[str] = None,
+    from_ts: Optional[float] = None,
+    to_ts: Optional[float] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    runs = (store or ApiStore()).list("reference_runs")
+    if fixture:
+        runs = [r for r in runs if r.get("fixtureId") == fixture]
+    if model_id:
+        runs = [r for r in runs if r.get("modelId") == model_id]
+    if status:
+        runs = [r for r in runs if r.get("status") == status]
+    if from_ts is not None:
+        runs = [r for r in runs if float(r.get("createdAt") or 0) >= from_ts]
+    if to_ts is not None:
+        runs = [r for r in runs if float(r.get("createdAt") or 0) <= to_ts]
+    return {"runs": runs[:limit], "total": len(runs)}
 
 
 def get_reference_run(run_id: str, store: Optional[ApiStore] = None) -> Dict[str, Any]:

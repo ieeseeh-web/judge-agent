@@ -4,10 +4,12 @@ import { Card, Select, Button, Space, Typography, Tag, Modal, Input, Tabs, Toolt
 import {
   ExperimentOutlined, BranchesOutlined, FlagOutlined, EditOutlined,
   DeleteOutlined, HistoryOutlined, RollbackOutlined, RobotOutlined,
-  UserOutlined, SettingOutlined, SendOutlined,
+  UserOutlined, SettingOutlined, SendOutlined, UnorderedListOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { usePromptHistory } from '../hooks/usePromptHistory';
 import type { PromptHistoryEntry } from '../hooks/usePromptHistory';
+import { RunHistoryPanel } from './RunHistoryPanel';
 import * as api from '../api/judgeClient';
 
 const { Title, Text } = Typography;
@@ -28,6 +30,7 @@ type ReferenceAgentPanelProps = {
   onRun: (run: ReferenceRun) => void;
   onJudge: () => void;
   onSetBaseline: () => void;
+  onSetBaselineFromRun: (run: ReferenceRun) => void;
   onComparePromptRegression: () => void;
   baselineRun: ReferenceRun | null;
   defaultPrompts: ReferencePromptDefaults | null;
@@ -176,9 +179,10 @@ function AgentBubble({ turn }: { turn: RefChatTurn }) {
 }
 
 export function ReferenceAgentPanel({
-  referenceRun, onRun, onJudge, onSetBaseline, onComparePromptRegression,
+  referenceRun, onRun, onJudge, onSetBaseline, onSetBaselineFromRun, onComparePromptRegression,
   baselineRun, defaultPrompts, isLoading,
 }: ReferenceAgentPanelProps) {
+  const [panelView, setPanelView] = useState<'chat' | 'history'>('chat');
   const [chatTurns, setChatTurns] = useState<RefChatTurn[]>([]);
   const [input, setInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -302,6 +306,16 @@ export function ReferenceAgentPanel({
     : referenceRun;
   const canJudge = !isLoading && !isRunning && latestRun.status === 'succeeded';
 
+  const handleHistoryJudge = (run: ReferenceRun) => {
+    onRun(run);
+    setPanelView('chat');
+    // referenceRun 상태 업데이트 후 사용자가 헤더의 Judge this trace 버튼 클릭
+  };
+
+  const handleHistorySetBaseline = (run: ReferenceRun) => {
+    onSetBaselineFromRun(run);
+  };
+
   return (
     <Card
       style={{ height: '100%' }}
@@ -385,8 +399,41 @@ export function ReferenceAgentPanel({
         )}
       </div>
 
+      {/* ── View tab bar ── */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0, background: '#fff' }}>
+        {([
+          { key: 'chat',    icon: <MessageOutlined />,       label: 'Chat' },
+          { key: 'history', icon: <UnorderedListOutlined />, label: 'Run History' },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setPanelView(tab.key)}
+            style={{
+              flex: 1, padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: '0.82rem', fontWeight: panelView === tab.key ? 700 : 400,
+              color: panelView === tab.key ? '#1677ff' : '#595959',
+              borderBottom: panelView === tab.key ? '2px solid #1677ff' : '2px solid transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            }}
+          >
+            {tab.icon}{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── History panel ── */}
+      {panelView === 'history' && (
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <RunHistoryPanel
+            onJudge={handleHistoryJudge}
+            onSetBaseline={handleHistorySetBaseline}
+            currentBaselineId={baselineRun?.id}
+          />
+        </div>
+      )}
+
       {/* ── Chat messages ── */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 20, background: '#fafafa' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px', display: panelView === 'chat' ? 'flex' : 'none', flexDirection: 'column', gap: 20, background: '#fafafa' }}>
         {chatTurns.length === 0 && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ textAlign: 'center', color: '#94a3b8' }}>
@@ -418,8 +465,8 @@ export function ReferenceAgentPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Input area ── */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0', background: '#fff', flexShrink: 0 }}>
+      {/* ── Input area (chat view only) ── */}
+      <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0', background: '#fff', flexShrink: 0, display: panelView === 'chat' ? 'block' : 'none' }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <Select
             placeholder="Examples (fixture 질의 자동완성)"

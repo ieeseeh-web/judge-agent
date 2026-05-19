@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from ..core.config import detector_rules_config
@@ -36,6 +37,9 @@ class ReferenceWebLogDetector:
             self.metric_consistency,
             self.rag_mcp_presence,
             self.chat_context,
+            self.tool_argument_mismatch,
+            self.repeated_tool_call,
+            self.context_hallucination,
         ]
         for check in checks:
             findings.extend(check(run, len(findings) + 1))
@@ -213,6 +217,207 @@ class ReferenceWebLogDetector:
                 findings.append(_new_finding(start, category="context", metric="chat_context_grounding", severity="medium", confidence=0.82, evidence=["chat_context_built has_last_analysis=false after analysis invocation."], expected="Follow-up responses should use last_analysis context.", actual="Context builder did not expose last_analysis.", recommendation="Persist analysis summary before follow-up turns."))
         if responses and not invoked and not context_events:
             findings.append(_new_finding(start + len(findings), category="context", metric="chat_context_grounding", severity="low", confidence=0.7, evidence=["Chat response generated without analysis invocation or context build."], expected="Chat responses should be classified and grounded in session context or ask clarification.", actual="No context evidence available.", recommendation="Emit chat_context_built for follow-up responses."))
+        return findings
+
+
+    def tool_argument_mismatch(self, run: SimpleAgentRun, start: int) -> List[Finding]:
+        """F-101: tool 인자가 사용자 요청과 불일치하는지 검사."""
+        findings: List[Finding] = []
+        user_input = (run.user_input or "").lower()
+        expects_5xx = "5xx" in user_input or "500" in user_input or "서버 에러" in user_input
+
+        status_min_5xx = int(REFERENCE_WEBLOG_RULES.get("status_5xx_min", 500))
+        status_max_5xx = int(REFERENCE_WEBLOG_RULES.get("status_5xx_max", 599))
+
+        for event in run.raw_by_type("tool_start"):
+            tool = event.get("tool", "")
+            args = event.get("arguments") or {}
+
+            # filter_log_records: status 범위 검사
+            if tool == TOOL_NAMES.get("filter_log_records", "filter_log_records"):
+                s_min = args.get("status_min")
+                s_max = args.get("status_max")
+                if expects_5xx and s_min is not None and s_max is not None:
+                    if int(s_min) > status_min_5xx or int(s_max) < status_max_5xx:
+                        findings.append(_new_finding(
+                            start + len(findings),
+                            category="tool",
+                            metric="tool_argument_mismatch",
+                            severity="high",
+                            confidence=0.9,
+                            evidence=[
+                                f"user_input contains '5xx' request",
+                                f"filter_log_records called with status_min={s_min}, status_max={s_max}",
+                                f"expected status range covering [{status_min_5xx}, {status_max_5xx}]",
+                            ],
+                            expected=f"filter_log_records status range should cover {status_min_5xx}~{status_max_5xx} for 5xx analysis.",
+                            actual=f"Actual range [{s_min}, {s_max}] does not cover 5xx status codes.",
+                            recommendation="Ground filter status range in parsed user request statusFocus/statusMin/statusMax.",
+                            location={"eventType": "tool_start", "tool": tool},
+                        ))
+
+                # path_pattern이 None이면서 expected target이 있을 때
+                path_pattern = args.get("path_pattern")
+                expected_path = target_path(run.user_input)
+                if expected_path and path_pattern is None:
+                    findings.append(_new_finding(
+                        start + len(findings),
+                        category="tool",
+                        metric="tool_argument_mismatch",
+                        severity="medium",
+                        confidence=0.8,
+                        evidence=[
+                            f"user_input specifies target path: {expected_path}",
+                            "filter_log_records called with path_pattern=None (no path filter applied)",
+                        ],
+                        expected=f"filter_log_records should filter by path_pattern={expected_path}.",
+                        actual="path_pattern was not set; all paths included in analysis.",
+                        recommendation="Extract targetPath from parse_user_request output and pass to filter_log_records.",
+                        location={"eventType": "tool_start", "tool": tool},
+                    ))
+
+        return findings
+
+    def repeated_tool_call(self, run: SimpleAgentRun, start: int) -> List[Finding]:
+        """F-102: 동일 tool이 임계값 이상 반복 호출되는지 검사."""
+        threshold = int(REFERENCE_WEBLOG_RULES.get("repeated_tool_call_threshold", 5))
+        findings: List[Finding] = []
+
+        # react_step 기준 tool 호출 횟수
+        tool_counter: Counter = Counter()
+        for event in run.raw_by_type("react_step"):
+            action = event.get("action")
+            if action and action != "finish":
+                tool_counter[action] += 1
+
+        for tool_name, count in tool_counter.items():
+            if count >= threshold:
+                findings.append(_new_finding(
+                    start + len(findings),
+                    category="tool",
+                    metric="repeated_tool_call",
+                    severity="high" if count >= threshold * 2 else "medium",
+                    confidence=0.92,
+                    evidence=[
+                        f"tool '{tool_name}' called {count} times (threshold: {threshold})",
+                        f"total react_step events: {sum(tool_counter.values())}",
+                    ],
+                    expected=f"Each tool should be called at most {threshold - 1} times in a single run.",
+                    actual=f"Tool '{tool_name}' was called {count} times, indicating a ReAct loop or stuck agent.",
+                    recommendation="Add loop detection in the ReAct agent; check tool output validity before retrying the same tool.",
+                    location={"eventType": "react_step", "tool": tool_name},
+                ))
+
+        # 동일 thought + action 패턴 반복 감지 (완전 동일 반복)
+        thought_action_pairs: Counter = Counter()
+        for event in run.raw_by_type("react_step"):
+            thought = (event.get("thought") or "").strip()
+            action = (event.get("action") or "").strip()
+            if thought and action and action != "finish":
+                key = f"{action}||{thought[:120]}"
+                thought_action_pairs[key] += 1
+
+        for key, count in thought_action_pairs.items():
+            if count >= 3:
+                action_part = key.split("||")[0]
+                findings.append(_new_finding(
+                    start + len(findings),
+                    category="tool",
+                    metric="repeated_tool_call",
+                    severity="high",
+                    confidence=0.95,
+                    evidence=[
+                        f"Identical thought+action pattern repeated {count} times",
+                        f"action: {action_part}",
+                    ],
+                    expected="Each ReAct step should produce new observations and progress.",
+                    actual="Agent repeated the exact same thought+action without progress (stuck loop).",
+                    recommendation="Implement loop-break condition: detect repeated observations and force finish or error.",
+                    location={"eventType": "react_step"},
+                ))
+                break  # 첫 번째 패턴만 리포트
+
+        return findings
+
+    def context_hallucination(self, run: SimpleAgentRun, start: int) -> List[Finding]:
+        """F-103: final output의 수치가 tool 산출 값과 크게 다른지 검사."""
+        tolerance = float(REFERENCE_WEBLOG_RULES.get("metric_hallucination_tolerance", 0.1))
+        findings: List[Finding] = []
+
+        # compute_log_metrics tool_end에서 실제 수치 수집
+        tool_metrics: Dict[str, float] = {}
+        for event in run.raw_by_type("tool_end"):
+            if event.get("tool") == TOOL_NAMES.get("compute_log_metrics", "compute_log_metrics"):
+                output = event.get("output") or {}
+                for key in ("error_rate", "request_count", "error_count", "5xx_count"):
+                    val = output.get(key)
+                    if val is not None:
+                        try:
+                            tool_metrics[key] = float(val)
+                        except (TypeError, ValueError):
+                            pass
+
+        if not tool_metrics or not run.final_output:
+            return []
+
+        # final output에서 수치 추출 (퍼센트 / 소수 패턴)
+        final = run.final_output
+        mismatches: List[str] = []
+
+        # error_rate 검사 (가장 중요)
+        if "error_rate" in tool_metrics:
+            tool_er = tool_metrics["error_rate"]
+            # 퍼센트로 표현된 값 추출 (예: 15.00%, 0.15)
+            pct_matches = re.findall(r"error.rate[^\d]{0,10}([\d.]+)\s*%", final, re.IGNORECASE)
+            raw_matches = re.findall(r"error.rate[^\d]{0,10}([\d.]+)(?!\s*%)", final, re.IGNORECASE)
+            for m in pct_matches:
+                try:
+                    claimed = float(m) / 100.0
+                    if abs(claimed - tool_er) > tolerance:
+                        mismatches.append(
+                            f"error_rate: tool={tool_er:.4f}, output_claimed={claimed:.4f} ({m}%)"
+                        )
+                except ValueError:
+                    pass
+            for m in raw_matches:
+                try:
+                    claimed = float(m)
+                    # 이미 소수 형태인 경우
+                    if claimed <= 1.0 and abs(claimed - tool_er) > tolerance:
+                        mismatches.append(
+                            f"error_rate: tool={tool_er:.4f}, output_claimed={claimed:.4f}"
+                        )
+                except ValueError:
+                    pass
+
+        # request_count 검사
+        if "request_count" in tool_metrics:
+            tool_rc = int(tool_metrics["request_count"])
+            rc_matches = re.findall(r"request.count[^\d]{0,10}(\d+)", final, re.IGNORECASE)
+            for m in rc_matches:
+                try:
+                    claimed = int(m)
+                    if abs(claimed - tool_rc) > max(1, tool_rc * tolerance):
+                        mismatches.append(
+                            f"request_count: tool={tool_rc}, output_claimed={claimed}"
+                        )
+                except ValueError:
+                    pass
+
+        if mismatches:
+            findings.append(_new_finding(
+                start,
+                category="completion",
+                metric="context_hallucination",
+                severity="critical",
+                confidence=0.88,
+                evidence=mismatches,
+                expected="Final output metric values should match the values produced by compute_log_metrics tool.",
+                actual="Final output contains metric values that differ significantly from tool output.",
+                recommendation="Require the agent to quote exact tool output values; add post-generation validation comparing claims to tool_end outputs.",
+                location={"eventType": "final_output"},
+            ))
+
         return findings
 
 

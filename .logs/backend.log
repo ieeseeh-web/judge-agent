@@ -115,3 +115,72 @@ INFO:     127.0.0.1:64367 - "GET /api/reference/prompts HTTP/1.1" 200 OK
 INFO:     127.0.0.1:64366 - "GET /api/config HTTP/1.1" 200 OK
 INFO:     127.0.0.1:64363 - "GET /api/models HTTP/1.1" 200 OK
 INFO:     127.0.0.1:64363 - "GET /api/models HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'judgeagent/judge_agent/analysis/detectors.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [65035]
+INFO:     Started server process [83015]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'judgeagent/judge_agent/analysis/detectors.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83015]
+INFO:     Started server process [83027]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'judgeagent/judge_agent/analysis/detectors.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83027]
+INFO:     Started server process [83044]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'judgeagent/backend/api_services.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83044]
+INFO:     Started server process [83103]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'judgeagent/backend/api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83103]
+INFO:     Started server process [83117]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:53979 - "OPTIONS /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53980 - "OPTIONS /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53979 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53987 - "OPTIONS /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53988 - "OPTIONS /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53988 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53982 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53987 - "GET /api/models HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'judgeagent/backend/api_services.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83117]
+INFO:     Started server process [83333]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:54092 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54096 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54097 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54100 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54101 - "OPTIONS /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54092 - "GET /api/reference/fixtures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54096 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54097 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54097 - "GET /api/reference/prompts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54096 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54093 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54093 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54107 - "OPTIONS /api/reference/runs HTTP/1.1" 200 OK

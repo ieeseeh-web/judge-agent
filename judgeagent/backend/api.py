@@ -105,8 +105,15 @@ def create_app():
         return run_reference_agent(reference_run_request(payload))
 
     @app.get("/api/reference/runs")
-    def api_reference_runs_list():
-        return list_reference_runs()
+    def api_reference_runs_list(
+        fixture: Optional[str] = None,
+        model_id: Optional[str] = Query(None, alias="modelId"),
+        status: Optional[str] = None,
+        from_ts: Optional[float] = Query(None, alias="from"),
+        to_ts: Optional[float] = Query(None, alias="to"),
+        limit: int = 50,
+    ):
+        return list_reference_runs(fixture=fixture, model_id=model_id, status=status, from_ts=from_ts, to_ts=to_ts, limit=limit)
 
     @app.get("/api/reference/runs/{run_id}")
     def api_reference_run(run_id: str):

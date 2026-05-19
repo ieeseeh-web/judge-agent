@@ -44,6 +44,20 @@ export async function getModels(): Promise<{ models: any[]; defaultModel: string
   return apiFetch<any>('/api/models');
 }
 
+export async function getRuns(params?: {
+  fixture?: string;
+  modelId?: string;
+  status?: string;
+  limit?: number;
+}): Promise<{ runs: any[]; total: number }> {
+  const q = new URLSearchParams();
+  if (params?.fixture)  q.set('fixture', params.fixture);
+  if (params?.modelId)  q.set('modelId', params.modelId);
+  if (params?.status)   q.set('status', params.status);
+  if (params?.limit)    q.set('limit', String(params.limit));
+  return apiFetch<any>(`/api/reference/runs?${q.toString()}`);
+}
+
 function mapRun(run: any): ReferenceRun {
   return {
     id: run.id,

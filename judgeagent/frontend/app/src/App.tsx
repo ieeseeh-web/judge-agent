@@ -63,6 +63,11 @@ function App() {
     messageApi.success(`Baseline set: ${referenceRun.fixture || referenceRun.id}`);
   };
 
+  const handleSetBaselineFromRun = (run: ReferenceRun) => {
+    setBaselineRun(run);
+    messageApi.success(`Baseline set: ${run.fixture || run.id}`);
+  };
+
   const handlePromptRegression = async () => {
     if (!baselineRun || !referenceRun || !config) return;
     if (baselineRun.id === referenceRun.id) {
@@ -170,6 +175,7 @@ function App() {
                   onRun={handleRun}
                   onJudge={handleJudge}
                   onSetBaseline={handleSetBaseline}
+                  onSetBaselineFromRun={handleSetBaselineFromRun}
                   onComparePromptRegression={handlePromptRegression}
                   baselineRun={baselineRun}
                   defaultPrompts={referencePrompts}

@@ -1,0 +1,209 @@
+name: Judge Agent — Prompt Regression
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      # 프롬프트, 에이전트 코드, Judge 설정이 바뀔 때만 실행
+      - 'judgeagent/reference/agent/weblog_agent/prompts.py'
+      - 'judgeagent/reference/agent/weblog_agent/graph.py'
+      - 'judgeagent/judge_agent/config/**'
+      - 'judgeagent/judge_agent/analysis/**'
+      - 'judgeagent/backend/**'
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: '비교할 Fixture ID'
+        required: false
+        default: 'normal-login-error-spike'
+      fail_on_regression:
+        description: 'Regression 발생 시 CI 실패 처리'
+        required: false
+        default: 'true'
+
+jobs:
+  prompt-regression:
+    name: Prompt Regression Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ── 1. 코드 체크아웃 ──────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # baseline(이전 커밋)과 candidate(현재) 비교를 위해
+
+      # ── 2. Python 환경 ────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -e '.[api]' --quiet
+
+      # ── 3. Baseline trace 생성 (이전 커밋 코드 기준) ──────────────
+      - name: Generate baseline trace
+        env:
+          JUDGE_LLM_PROVIDER: ${{ vars.JUDGE_LLM_PROVIDER || 'none' }}
+          JUDGE_LLM_MODEL:    ${{ vars.JUDGE_LLM_MODEL    || 'deterministic-fallback' }}
+          OPENAI_API_KEY:     ${{ secrets.OPENAI_API_KEY  || '' }}
+        run: |
+          FIXTURE="${{ github.event.inputs.fixture || 'normal-login-error-spike' }}"
+          mkdir -p /tmp/judge-regression/baseline
+          git stash --include-untracked || true
+          python3 -m judgeagent.reference.agent.weblog_agent.cli run-fixture \
+            "$FIXTURE" \
+            --output-dir /tmp/judge-regression/baseline \
+            --no-llm
+          git stash pop || true
+          echo "BASELINE_TRACE=/tmp/judge-regression/baseline/${FIXTURE}.jsonl" >> "$GITHUB_ENV"
+          echo "FIXTURE=$FIXTURE" >> "$GITHUB_ENV"
+
+      # ── 4. Candidate trace 생성 (현재 PR 코드 기준) ───────────────
+      - name: Generate candidate trace
+        env:
+          JUDGE_LLM_PROVIDER: ${{ vars.JUDGE_LLM_PROVIDER || 'none' }}
+          JUDGE_LLM_MODEL:    ${{ vars.JUDGE_LLM_MODEL    || 'deterministic-fallback' }}
+          OPENAI_API_KEY:     ${{ secrets.OPENAI_API_KEY  || '' }}
+        run: |
+          mkdir -p /tmp/judge-regression/candidate
+          python3 -m judgeagent.reference.agent.weblog_agent.cli run-fixture \
+            "${{ env.FIXTURE }}" \
+            --output-dir /tmp/judge-regression/candidate \
+            --no-llm
+          echo "CANDIDATE_TRACE=/tmp/judge-regression/candidate/${{ env.FIXTURE }}.jsonl" >> "$GITHUB_ENV"
+
+      # ── 5. Prompt Regression 비교 ─────────────────────────────────
+      - name: Run prompt regression comparison
+        id: regression
+        run: |
+          FAIL_FLAG=""
+          if [ "${{ github.event.inputs.fail_on_regression || 'true' }}" = "true" ]; then
+            FAIL_FLAG="--fail-on-regression"
+          fi
+
+          python3 -m judgeagent.backend.cli compare-prompt-regression \
+            --baseline-trace "${{ env.BASELINE_TRACE }}" \
+            --candidate-trace "${{ env.CANDIDATE_TRACE }}" \
+            --output /tmp/judge-regression/report.md \
+            --json   /tmp/judge-regression/result.json \
+            $FAIL_FLAG
+
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      # ── 6. 결과 요약 출력 ─────────────────────────────────────────
+      - name: Summarize regression result
+        if: always()
+        run: |
+          echo "## Judge Agent — Prompt Regression Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f /tmp/judge-regression/result.json ]; then
+            python3 - <<'PYEOF'
+          import json, os
+
+          with open('/tmp/judge-regression/result.json') as f:
+              result = json.load(f)
+
+          summary = result.get('summary', {})
+          findings = result.get('findings', [])
+
+          lines = [
+              f"| 항목 | Baseline | Candidate |",
+              f"|------|----------|-----------|",
+              f"| Gate | **{summary.get('baselineGate','—')}** | **{summary.get('candidateGate','—')}** |",
+              f"| Score | {summary.get('baselineScore','—')} | {summary.get('candidateScore','—')} |",
+              f"| Regression Score | — | **{summary.get('regressionScore','—')}** |",
+              f"| Gate Regressed | — | {'⚠️ YES' if summary.get('gateRegressed') else '✅ NO'} |",
+              f"| Model Changed | — | {'⚠️ YES' if summary.get('modelChanged') else '✅ NO'} |",
+              f"",
+          ]
+          if summary.get('baselineModel') or summary.get('candidateModel'):
+              lines.append(f"> Baseline model: `{summary.get('baselineModel','—')}` → Candidate model: `{summary.get('candidateModel','—')}`")
+              lines.append("")
+
+          if findings:
+              lines.append(f"### Regression Findings ({len(findings)}개)")
+              for f in findings:
+                  lines.append(f"- **[{f['severity'].upper()}]** `{f['metric']}` — {f['actual']}")
+          else:
+              lines.append("### ✅ Regression Findings 없음")
+
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines) + '\n')
+
+          print('\n'.join(lines))
+          PYEOF
+          else
+            echo "결과 파일을 찾을 수 없습니다." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ── 7. PR 코멘트 게시 ─────────────────────────────────────────
+      - name: Post PR comment
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## 🤖 Judge Agent — Prompt Regression\n\n';
+
+            try {
+              const result = JSON.parse(fs.readFileSync('/tmp/judge-regression/result.json', 'utf8'));
+              const s = result.summary || {};
+              const findings = result.findings || [];
+              const gateOk = !s.gateRegressed;
+              const scoreOk = (s.regressionScore ?? 100) >= 85;
+
+              body += gateOk && scoreOk
+                ? '✅ **STABLE** — Regression 없음\n\n'
+                : '⚠️ **REGRESSED** — 변경 검토 필요\n\n';
+
+              body += `| | Baseline | Candidate |\n|---|---|---|\n`;
+              body += `| Gate | \`${s.baselineGate ?? '—'}\` | \`${s.candidateGate ?? '—'}\` |\n`;
+              body += `| Score | ${s.baselineScore ?? '—'} | ${s.candidateScore ?? '—'} |\n`;
+              body += `| Regression Score | — | **${s.regressionScore ?? '—'}** |\n`;
+              if (s.modelChanged) {
+                body += `\n> ⚠️ 모델 변경 감지: \`${s.baselineModel}\` → \`${s.candidateModel}\`\n`;
+              }
+              if (findings.length > 0) {
+                body += `\n### Findings\n`;
+                findings.forEach(f => {
+                  body += `- **[${f.severity.toUpperCase()}]** \`${f.metric}\`\n`;
+                });
+              }
+            } catch (e) {
+              body += `결과를 읽을 수 없습니다: ${e.message}\n`;
+            }
+
+            body += `\n<sub>Fixture: \`${{ env.FIXTURE }}\` | [워크플로 실행](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>`;
+
+            // 기존 Judge 코멘트 업데이트 or 신규 생성
+            const marker = '🤖 Judge Agent — Prompt Regression';
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.data.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body,
+              });
+            }
+
+      # ── 8. 결과 artifact 저장 ─────────────────────────────────────
+      - name: Upload regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-regression-${{ github.run_id }}
+          path: /tmp/judge-regression/
+          retention-days: 14

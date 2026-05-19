@@ -33,6 +33,11 @@
       "block_score_below": 70,
       "warning_score_below": 85
     },
+    "repeated_tool_call_threshold": 5,
+    "repeated_thought_similarity_threshold": 0.85,
+    "status_5xx_min": 500,
+    "status_5xx_max": 599,
+    "metric_hallucination_tolerance": 0.1,
     "metric_root_causes": {
       "validation_path_coverage": "graph transition이 validation 단계를 우회했거나 validation 결과를 gate 조건으로 강제하지 않은 구조 문제",
       "target_endpoint_consistency": "사용자 요청에서 파싱한 targetPath가 tool argument 생성 단계에 안정적으로 고정되지 않은 문제",
@@ -45,7 +50,10 @@
       "prompt_version_regression_score": "prompt 변경 후 동일 fixture/input에서 score, gate, finding 품질이 기준 prompt보다 악화된 문제",
       "gate_regression": "prompt 변경으로 Judge gate가 pass에서 warning/block 또는 warning에서 block으로 악화된 문제",
       "new_high_severity_findings": "prompt 변경 후 candidate run에 기준 run에는 없던 high/critical finding이 새로 발생한 문제",
-      "tool_and_output_stability_score": "prompt 변경 후 tool sequence, validation path, target grounding 또는 output format 안정성이 깨진 문제"
+      "tool_and_output_stability_score": "prompt 변경 후 tool sequence, validation path, target grounding 또는 output format 안정성이 깨진 문제",
+      "tool_argument_mismatch": "tool 호출 시 인자가 사용자 요청과 일치하지 않거나 잘못된 status 범위를 사용한 문제",
+      "repeated_tool_call": "동일 tool이 임계값 이상 반복 호출되어 루프 또는 잘못된 ReAct 흐름을 나타내는 문제",
+      "context_hallucination": "final output의 수치/지표가 tool이 실제로 산출한 값과 크게 다른 hallucination 문제"
     }
   }
 }
