@@ -68,5 +68,79 @@
     "jsonPath": "artifacts/frontend-api/prompt-regressions/results/preg_20260518_225814_683.json",
     "createdAt": 1779112694.7790039,
     "updatedAt": 1779112694.7790039
+  },
+  "preg_20260519_205330_088": {
+    "id": "preg_20260519_205330_088",
+    "status": "succeeded",
+    "adapter": "reference-weblog-jsonl",
+    "baseline": {
+      "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_204518_190_custom-analysis_7e9c22.jsonl",
+      "referenceRunId": "ref_20260519_204518_190_custom-analysis_7e9c22"
+    },
+    "candidate": {
+      "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_204947_679_custom-analysis_e1e619.jsonl",
+      "referenceRunId": "ref_20260519_204947_679_custom-analysis_e1e619"
+    },
+    "summary": {
+      "baselineRunId": "ref_20260519_204518_190_custom-analysis_7e9c22",
+      "candidateRunId": "ref_20260519_204947_679_custom-analysis_e1e619",
+      "baselineGate": "block",
+      "candidateGate": "warning",
+      "baselineScore": 49,
+      "candidateScore": 71,
+      "scoreDelta": 22,
+      "gateChanged": true,
+      "gateRegressed": false,
+      "newFindingCount": 0,
+      "newHighCriticalFindingCount": 0,
+      "resolvedFindingCount": 2,
+      "regressionScore": 100,
+      "baselineModel": "gemma4:latest",
+      "candidateModel": "gemma4:latest",
+      "modelChanged": false
+    },
+    "findings": [],
+    "newFindings": [],
+    "resolvedFindings": [
+      {
+        "id": "JD-004",
+        "category": "tool",
+        "metric": "repeated_tool_call",
+        "severity": "medium",
+        "confidence": 0.92,
+        "evidence": [
+          "tool 'read_log_file' called 6 times (threshold: 5)",
+          "total react_step events: 10"
+        ],
+        "expected": "Each tool should be called at most 4 times in a single run.",
+        "actual": "Tool 'read_log_file' was called 6 times, indicating a ReAct loop or stuck agent.",
+        "recommendation": "Add loop detection in the ReAct agent; check tool output validity before retrying the same tool.",
+        "location": {
+          "eventType": "react_step",
+          "tool": "read_log_file"
+        }
+      },
+      {
+        "id": "JD-005",
+        "category": "tool",
+        "metric": "repeated_tool_call",
+        "severity": "high",
+        "confidence": 0.95,
+        "evidence": [
+          "Identical thought+action pattern repeated 4 times",
+          "action: read_log_file"
+        ],
+        "expected": "Each ReAct step should produce new observations and progress.",
+        "actual": "Agent repeated the exact same thought+action without progress (stuck loop).",
+        "recommendation": "Implement loop-break condition: detect repeated observations and force finish or error.",
+        "location": {
+          "eventType": "react_step"
+        }
+      }
+    ],
+    "reportPath": "artifacts/frontend-api/prompt-regressions/reports/preg_20260519_205330_088.md",
+    "jsonPath": "artifacts/frontend-api/prompt-regressions/results/preg_20260519_205330_088.json",
+    "createdAt": 1779191610.1432378,
+    "updatedAt": 1779191610.1432378
   }
 }

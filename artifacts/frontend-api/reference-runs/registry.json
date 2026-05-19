@@ -4816,5 +4816,412 @@
     ],
     "createdAt": 1779116639.414952,
     "updatedAt": 1779116639.414953
+  },
+  "ref_20260519_204518_190_custom-analysis_7e9c22": {
+    "id": "ref_20260519_204518_190_custom-analysis_7e9c22",
+    "mode": "custom-analysis",
+    "status": "succeeded",
+    "fixtureId": null,
+    "userInput": "지난 1시간 동안 /api/login endpoint에서 5xx 에러율이 평소보다 증가했는지 분석하고 근거를 알려주세요.",
+    "accessLogPath": "/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log",
+    "useLlm": true,
+    "modelId": "gemma4:latest",
+    "promptVariant": "default",
+    "promptOverrides": [],
+    "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_204518_190_custom-analysis_7e9c22.jsonl",
+    "reportPath": "artifacts/frontend-api/reference-runs/reports/ref_20260519_204518_190_custom-analysis_7e9c22.md",
+    "eventCounts": {
+      "run_start": 1,
+      "instruction_snapshot": 1,
+      "node_start": 4,
+      "mcp_start": 1,
+      "mcp_end": 1,
+      "agent_components": 1,
+      "node_end": 4,
+      "edge_selected": 3,
+      "llm_start": 11,
+      "llm_end": 11,
+      "react_step": 10,
+      "observation": 10,
+      "tool_start": 9,
+      "tool_end": 9,
+      "validation_result": 2,
+      "prompt_instruction_metrics": 1,
+      "final_output": 1,
+      "run_end": 1
+    },
+    "timelinePreview": [
+      {
+        "index": 4,
+        "type": "mcp_end",
+        "title": "tools/list",
+        "detail": ""
+      },
+      {
+        "index": 11,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. \n\nFirst, I need to parse the user request to extract the specific parameters: target path, requested metrics, and status focus.\n\nThen, I need to load and parse the raw access logs."
+      },
+      {
+        "index": 15,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze the 5xx error rate for the `/api/login` endpoint over the last hour and determine if it has increased compared to normal. \n\nMy plan is:\n1. Load and parse the raw access logs.\n2. Filter the parsed logs specifically for the `/api/login` path and 5xx status codes.\n3. Compute the error rate metrics for the filtered data.\n4. Detect any anomalies in the computed error rate compared to a baseline.\n5. Gather service context and runbook information for comprehensive reporting.\n6. Collect evidence and generate the final report.\n\nStarting with loading and parsing the logs."
+      },
+      {
+        "index": 16,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 17,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 21,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. \n\n1. **Parse Request:** The `state` already contains the parsed request details: `targetPath`: `/api/login`, `statusFocus`: `5xx`, `requestedMetrics`: `error_rate`. This step is complete.\n2. **Load Logs:** The `logSource` specifies the path: `/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log`. I must load the raw logs first.\n3. **Parse Logs:** The logs are in `nginx_combined` format, so I need to parse them.\n4. **Filter Logs:** I need to filter the parsed records by the target path (`/api/login`) and the status range (5xx errors).\n5. **Compute Metrics:** Finally, I will compute the error rate and check for anomalies."
+      },
+      {
+        "index": 22,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 23,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 27,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. The state shows the raw logs are available, and the target path and status focus (5xx) are identified. The next logical steps are to first load and parse the raw logs, then filter them based on the criteria, compute the metrics (error rate), and finally check for anomalies and gather context."
+      },
+      {
+        "index": 28,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 29,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 33,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. I have already parsed the user request and have the necessary parameters: `targetPath` is `/api/login`, `statusFocus` is `5xx`, and the metric is `error_rate`. First, I need to load and parse the raw access logs, then filter them for the specific path and status codes, and finally compute the error rate and check for anomalies."
+      },
+      {
+        "index": 34,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 35,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 39,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. I have already parsed the request and have the necessary parameters: `targetPath`: `/api/login`, `statusFocus`: `5xx`, and `requestedMetrics`: `error_rate`. \n\nFirst, I need to load and parse the raw access logs. The `read_log_file` tool is appropriate for loading the raw data, and then `parse_access_log` will structure it. Although the state shows `parsedRecordCount: 100`, I must execute the steps to ensure the data is ready for filtering and analysis.\n\nNext, I will filter the parsed records specifically for the `/api/login` path and the 5xx status codes. Finally, I will compute the error rate and check for anomalies."
+      },
+      {
+        "index": 40,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 41,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 45,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user wants to analyze the 5xx error rate for the `/api/login` endpoint over the last hour and determine if it has increased compared to normal. \n\nBased on the state, the initial parsing was successful, and the necessary parameters are available: `targetPath` is `/api/login`, `statusFocus` is `5xx`, and the time window is 'last 1 hour'.\n\nMy plan is: \n1. Load the raw logs (if not already loaded/parsed).\n2. Parse the logs into structured records.\n3. Filter the records specifically for the `/api/login` path and 5xx status codes.\n4. Compute the error rate metrics for the filtered data.\n5. Detect anomalies by comparing the computed rate to a baseline.\n6. Gather evidence and generate the final report.\n\nSince the state shows `parsedRecordCount: 100` and `filteredRecordCount: 0`, I need to ensure the logs are parsed and then filtered correctly. I will start by parsing the logs, assuming the raw logs are available in the state, and then filtering them."
+      },
+      {
+        "index": 46,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 47,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 51,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. I have already parsed the user request and have the necessary log source information. The next steps are to load, parse, and filter the logs to isolate the relevant records, and then compute the error rate and check for anomalies."
+      },
+      {
+        "index": 52,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 53,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 57,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants to analyze the 5xx error rate for the `/api/login` endpoint over the last hour and determine if it has increased compared to normal. I have already parsed the user request and have the necessary log source details. The next steps are to load, parse, and filter the logs, then compute the metrics, and finally check for anomalies and gather context before reporting."
+      },
+      {
+        "index": 58,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 59,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 63,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user wants to analyze if the 5xx error rate for the `/api/login` endpoint has increased compared to normal over the last hour. I have already parsed the user request and have the necessary parameters: `targetPath` is `/api/login`, `statusFocus` is `5xx`, and the metric is `error_rate`. The logs are available at `/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log` and are in `nginx_combined` format. \n\nFirst, I need to load and parse the raw logs. Although the state shows `parsedRecordCount: 100`, I must explicitly use the tools to ensure the data is ready for filtering and analysis. The next step is to parse the logs, then filter them for the specific path and status code range, and finally compute the metrics and check for anomalies."
+      },
+      {
+        "index": 64,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 65,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 70,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 76,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 79,
+        "type": "final_output",
+        "title": "final_output",
+        "detail": "## Summary\nAnalysis of the 5xx error rate for the `/api/login` endpoint over the last hour could not be completed. While raw logs were available, the agent failed to extract specific metrics, identify anomalies, or retrieve necessary contextual information (RAG runbooks or MCP service metadata). Therefore, no quantitative conclusions regarding an increase in the error rate can be drawn at this time.\n\n## Key Metrics\n| Metric | Value | Notes |\n| :--- | :--- | :--- |\n| **5xx Error Rate** | N/A | No calculated error rate was provided in the state. |\n| **Parse Error Count** | 0 | Indicates no parsing errors were detected during the analysis run. |\n\n## Anomalies\nNo anomalies were detected in the provided state.\n\n## Evidence\nNo specific log lines or metric references were successfully extracted and provided for evidence. The raw log data contained 100 lines, but the analysis process did not yield actionable evidence.\n\n## RAG Context\nNo runbook context was retrieved. The system validation expl"
+      }
+    ],
+    "createdAt": 1779191350.4345212,
+    "updatedAt": 1779191350.4345222
+  },
+  "ref_20260519_204947_679_custom-analysis_e1e619": {
+    "id": "ref_20260519_204947_679_custom-analysis_e1e619",
+    "mode": "custom-analysis",
+    "status": "succeeded",
+    "fixtureId": null,
+    "userInput": "지난 1시간 동안 /api/login endpoint에서 5xx 에러율을 분석하고 근거와 한계를 알려주세요.",
+    "accessLogPath": "/Users/l-20220020/workspaces/judge-agent/judgeagent/reference/agent/weblog_agent/fixtures/access.log",
+    "useLlm": true,
+    "modelId": "gemma4:latest",
+    "promptVariant": "default",
+    "promptOverrides": [],
+    "tracePath": "artifacts/frontend-api/reference-runs/traces/ref_20260519_204947_679_custom-analysis_e1e619.jsonl",
+    "reportPath": "artifacts/frontend-api/reference-runs/reports/ref_20260519_204947_679_custom-analysis_e1e619.md",
+    "eventCounts": {
+      "run_start": 1,
+      "instruction_snapshot": 1,
+      "node_start": 4,
+      "mcp_start": 1,
+      "mcp_end": 1,
+      "agent_components": 1,
+      "node_end": 4,
+      "edge_selected": 3,
+      "llm_start": 10,
+      "llm_end": 9,
+      "react_step": 9,
+      "observation": 8,
+      "tool_start": 5,
+      "tool_end": 5,
+      "validation_result": 2,
+      "llm_error": 1,
+      "prompt_instruction_metrics": 1,
+      "final_output": 1,
+      "run_end": 1
+    },
+    "timelinePreview": [
+      {
+        "index": 4,
+        "type": "mcp_end",
+        "title": "tools/list",
+        "detail": ""
+      },
+      {
+        "index": 11,
+        "type": "react_step",
+        "title": "parse_user_request",
+        "detail": "The user wants to analyze the 5xx error rate for the `/api/login` endpoint over the last hour. I need to follow a structured process: 1) Parse the request to confirm parameters. 2) Load and parse the raw logs. 3) Filter the logs based on the path and status code range (5xx). 4) Compute the required metrics (error rate). 5) Check for anomalies and gather context (runbooks, service context). 6) Generate the final report."
+      },
+      {
+        "index": 15,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs path and the required filtering parameters. First, I need to load and parse the raw access logs, then filter them based on the target path and 5xx status codes, and finally compute the error rate metrics."
+      },
+      {
+        "index": 16,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 17,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 21,
+        "type": "react_step",
+        "title": "read_log_file",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available and the request parameters have been successfully parsed. The next steps must be to load, parse, and then filter the logs to isolate the relevant records before computing metrics. I will start by reading the raw log file, then parsing it, and finally filtering it by the specified path and status code range."
+      },
+      {
+        "index": 22,
+        "type": "tool_start",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 23,
+        "type": "tool_end",
+        "title": "read_log_file",
+        "detail": ""
+      },
+      {
+        "index": 27,
+        "type": "react_step",
+        "title": "parse_access_log",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows the raw logs are available and the request parameters have been extracted. The next steps must be to parse the raw logs, filter them by the specified path and status code range, compute the required metrics (error rate), and finally, analyze and report the findings. I will start by parsing the logs."
+      },
+      {
+        "index": 28,
+        "type": "tool_start",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 29,
+        "type": "tool_end",
+        "title": "parse_access_log",
+        "detail": ""
+      },
+      {
+        "index": 33,
+        "type": "react_step",
+        "title": "filter_log_records",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state indicates that the raw logs are available, and the initial parsing and filtering steps have been performed (though the `filteredRecordCount` is 0, which is suspicious, I must proceed with the logical flow). \n\nFirst, I need to ensure the logs are loaded and parsed. The state shows `parsedRecordCount: 100`, so the logs are likely parsed. \n\nNext, I must filter the logs to the specific path (`/api/login`) and status range (`5xx`). The state shows `filteredRecordCount: 0`, which suggests the filtering step might be necessary or needs re-evaluation. I will assume the logs are loaded and parsed, and I need to explicitly filter them.\n\nAfter filtering, I will compute the required metric: the error rate. Finally, I will collect evidence and generate the report."
+      },
+      {
+        "index": 34,
+        "type": "tool_start",
+        "title": "filter_log_records",
+        "detail": ""
+      },
+      {
+        "index": 35,
+        "type": "tool_end",
+        "title": "filter_log_records",
+        "detail": ""
+      },
+      {
+        "index": 39,
+        "type": "react_step",
+        "title": "compute_log_metrics",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour. The state shows that the initial parsing and filtering steps have already occurred, resulting in 80 filtered records. The next logical steps are to compute the required metrics (error rate) and then check for anomalies and gather context (service context, runbook) before generating the final report. I will start by computing the metrics."
+      },
+      {
+        "index": 40,
+        "type": "tool_start",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 41,
+        "type": "tool_end",
+        "title": "compute_log_metrics",
+        "detail": ""
+      },
+      {
+        "index": 45,
+        "type": "react_step",
+        "title": "collect_evidence",
+        "detail": "The user has provided a full state object from a previous step (step 7). The goal is to analyze the 5xx error rate for the `/api/login` endpoint over the last hour, providing evidence and limitations. The state already contains the necessary metrics and filtered data. I need to synthesize this information into a comprehensive report. The available tools include `collect_evidence` and `finish`. I should first collect the evidence (metrics and log lines) and then finish the report."
+      },
+      {
+        "index": 49,
+        "type": "react_step",
+        "title": "collect_evidence",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour, including evidence and limitations. The state object already contains all the necessary metrics and evidence from previous steps. I have the computed metrics (error_rate=0.15, 5xx_count=12, request_count=80) and representative log lines. I should first collect all this evidence to ensure the final report is comprehensive and grounded in the provided data. After collecting evidence, I will use the 'finish' action to generate the final report."
+      },
+      {
+        "index": 53,
+        "type": "react_step",
+        "title": "finish",
+        "detail": "The user wants an analysis of the 5xx error rate for the `/api/login` endpoint over the last hour, including evidence and limitations. The state already contains all necessary information: the metrics have been computed, the relevant logs are filtered, and the evidence has been collected. I need to synthesize this information into a final report. I will use the `collect_evidence` tool to ensure all necessary data points are gathered before finishing, although the state already contains a lot of evidence. Since the state is highly populated and the goal is reporting, I will proceed directly to `finish` after confirming the data is ready."
+      },
+      {
+        "index": 57,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 63,
+        "type": "validation_result",
+        "title": "validation_result",
+        "detail": ""
+      },
+      {
+        "index": 66,
+        "type": "final_output",
+        "title": "final_output",
+        "detail": "## Summary\n\nAnalyzed web logs for `/api/login` using a ReAct agent flow with tools, RAG, and MCP context. Request count was 80 and error rate was 15.00%.\n\n## Key Metrics\n\n- request_count: 80\n- error_count: 12\n- 5xx_count: 12\n- error_rate: 15.00%\n- p95_latency_ms: 1400\n\n## Anomalies\n\n- No threshold-based anomalies detected.\n\n## Evidence\n\nRepresentative log lines:\n\n- `203.0.113.1 - - [13/May/2026:03:00:00 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.2 - - [13/May/2026:03:00:30 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.3 - - [13/May/2026:03:01:00 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.4 - - [13/May/2026:03:01:30 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n- `203.0.113.5 - - [13/May/2026:03:02:00 +0000] \"POST /api/login HTTP/1.1\" 500 512 \"-\" \"fixture-agent\" 1400`\n\nMetric references:\n\n- error_rate=0.15\n- request_count=80\n\n## RAG Context\n\n- No runbook d"
+      }
+    ],
+    "createdAt": 1779191599.14538,
+    "updatedAt": 1779191599.14538
   }
 }
