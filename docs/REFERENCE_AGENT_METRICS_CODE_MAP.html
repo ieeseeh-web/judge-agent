@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Reference Agent Metrics 코드 맵</title><style>
+:root{--bg:#fffaf0;--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--card:#ffffff;--code:#f3f4f6;--accent:#2563eb}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--fg);line-height:1.62}main{max-width:1180px;margin:0 auto;padding:40px 24px 80px}h1{font-size:2.1rem;margin:0 0 20px}h2{margin-top:44px;padding-bottom:8px;border-bottom:2px solid var(--line)}h3{margin-top:32px}blockquote{background:#eff6ff;border-left:4px solid var(--accent);padding:12px 16px;color:#1e3a8a}table{width:100%;border-collapse:collapse;margin:16px 0 28px;background:var(--card);font-size:.92rem}th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}th{background:#f9fafb;text-align:left}code{background:var(--code);padding:.12em .32em;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}pre{background:#111827;color:#e5e7eb;padding:16px;border-radius:10px;overflow:auto}pre code{background:transparent;padding:0;color:inherit}.metadata{color:var(--muted);margin-bottom:24px}
+</style></head><body><main><div class="metadata">Generated from <code>docs/REFERENCE_AGENT_METRICS_CODE_MAP.md</code></div><h1 id="reference-agent-metrics-코드-맵">Reference Agent Metrics 코드 맵</h1>
+<blockquote>대상 프로젝트: <code>~/workspaces/judge/judge-agent</code><br>대상 구현: <code>judgeagent/reference/agent/weblog_agent</code> reference web log agent + 이를 분석하는 <code>judgeagent/judge_agent</code> Judge Agent<br>용어: 사용자 요청의 <code>matrics</code>는 코드/설정 표기 기준인 <code>metrics</code>로 정리했다.</blockquote>
+<h2 id="1-전체-결론">1. 전체 결론</h2>
+<p>현재 구현은 두 종류의 metrics를 다룬다.</p>
+<p>1. <strong>Reference Agent가 수집/계산하는 운영 로그 metrics</strong>  </p>
+<p>   <code>request_count</code>, <code>error_rate</code>, <code>p95_latency_ms</code>처럼 웹 로그에서 계산되는 값이다. 이 값들은 reference agent의 report 생성, anomaly 탐지, evidence 작성에 사용된다.</p>
+<p>2. <strong>Judge Agent가 분석하는 drift metrics</strong>  </p>
+<p>   <code>validation_path_coverage</code>, <code>metric_result_consistency</code>처럼 trace를 보고 agent 실행이 올바른지 판정하는 지표다. 이 지표들은 finding, score, gate로 이어진다.</p>
+<p>중요한 구분은 다음과 같다.</p>
+<ul>
+<li>Judge Agent가 <strong>현재 직접 분석하는 drift metrics</strong>: <code>ReferenceWebLogDetector.detect()</code>에 연결된 규칙과 prompt regression 비교 규칙이다.</li>
+<li>Reference Agent가 <strong>데이터는 수집하지만 Judge Agent가 값 자체를 직접 분석하지 않는 metrics</strong>: latency percentile, 4xx/5xx count, anomaly 목록 대부분이다. 다만 final report, validation, evidence의 근거로 간접 활용된다.</li>
+<li><code>metrics.json</code>에는 향후 확장을 위한 metric 정의가 많이 들어있고, 일부는 아직 detector에서 finding을 만들지 않는다.</li>
+</ul>
+<h2 id="2-metrics-데이터-흐름">2. Metrics 데이터 흐름</h2>
+<pre><code>사용자 입력
+  -&gt; WebLogAnalysisAgent.run()
+  -&gt; ReAct action 실행
+     -&gt; parse_user_request
+     -&gt; read_log_file
+     -&gt; parse_access_log
+     -&gt; filter_log_records
+     -&gt; compute_log_metrics
+     -&gt; detect_log_anomalies
+     -&gt; retrieve_runbook / get_service_context / collect_evidence
+  -&gt; validate_findings / finalize
+  -&gt; TraceLogger JSONL trace 저장
+  -&gt; ReferenceAgentJsonlAdapter가 SimpleAgentRun으로 정규화
+  -&gt; ReferenceWebLogDetector가 drift metric finding 생성
+  -&gt; score_findings / gate_for로 score, gate 생성</code></pre>
+<p>관련 코드:</p>
+<table><thead><tr><th>단계</th><th>파일/라인</th><th>역할</th></tr></thead><tbody>
+<tr><td>요청 metric 의도 파싱</td><td><code>judgeagent/reference/agent/weblog_agent/graph.py:19-33</code></td><td>user input에서 target path와 requested metrics를 추출</td></tr>
+<tr><td>운영 로그 metric 계산</td><td><code>judgeagent/reference/agent/weblog_agent/tools.py:91-110</code></td><td>request/error/latency/top path/top IP 계산</td></tr>
+<tr><td>anomaly metric 판정</td><td><code>judgeagent/reference/agent/weblog_agent/tools.py:113-130</code></td><td>error rate, p95 latency, suspicious IP threshold 판정</td></tr>
+<tr><td>metric state 저장</td><td><code>judgeagent/reference/agent/weblog_agent/state.py:8-45</code></td><td><code>metrics</code>, <code>anomalies</code>, <code>evidence</code> 등을 snapshot에 포함</td></tr>
+<tr><td>trace 기록</td><td><code>judgeagent/reference/agent/weblog_agent/trace.py:38-68</code></td><td>tool/node/final/validation 이벤트를 JSONL로 기록</td></tr>
+<tr><td>trace 정규화</td><td><code>judgeagent/judge_agent/adapters/reference.py:16-121</code></td><td>raw event를 <code>SimpleAgentRun</code>/<code>SimpleEvent</code>로 변환</td></tr>
+<tr><td>Judge drift 분석</td><td><code>judgeagent/judge_agent/analysis/detectors.py:25-230</code></td><td>detector 규칙이 finding metric 생성</td></tr>
+<tr><td>score/gate</td><td><code>judgeagent/judge_agent/analysis/detectors.py:219-230</code></td><td>finding severity 기반 score와 gate 계산</td></tr>
+<tr><td>registry</td><td><code>judgeagent/judge_agent/core/metrics.py:8-87</code></td><td><code>metrics.json</code> metric 정의 로딩/조회/보강</td></tr>
+</tbody></table>
+<h2 id="3-reference-agent가-수집-계산하는-운영-로그-metrics">3. Reference Agent가 수집/계산하는 운영 로그 metrics</h2>
+<h3 id="3-1-요청에서-수집-의도를-파악하는-값">3.1 요청에서 수집 의도를 파악하는 값</h3>
+<p>파일: <code>judgeagent/reference/agent/weblog_agent/graph.py:19-33</code></p>
+<table><thead><tr><th>값</th><th>라인</th><th>수집 방식</th><th>현재 활용</th><th>Judge 직접 분석 여부</th></tr></thead><tbody>
+<tr><td><code>rawUserInput</code></td><td>28</td><td>원본 사용자 입력 저장</td><td>trace/run metadata와 report context</td><td>일부 규칙이 사용. <code>target_endpoint_consistency</code>가 user input에서 target path 재추출</td></tr>
+<tr><td><code>targetPath</code></td><td>20, 29</td><td>정규식으로 <code>/...</code> path 추출</td><td><code>filter_log_records</code>의 path filter</td><td>직접 분석. tool argument/top_paths와 비교</td></tr>
+<tr><td><code>requestedMetrics</code></td><td>21-30</td><td><code>error</code>, <code>5xx</code>, <code>latency</code>, <code>지연</code> 키워드 기반</td><td>state에 저장되지만 실제 metric 계산 분기에는 제한적으로만 영향</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>statusMin</code>, <code>statusMax</code></td><td>26-32</td><td>기본값 0~599</td><td>filter 범위</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>statusFocus</code></td><td>32</td><td><code>5xx</code> 키워드 여부</td><td>state 저장</td><td>직접 분석 안 함</td></tr>
+</tbody></table>
+<p>라인 단위 설명:</p>
+<ul>
+<li><code>graph.py:19</code> — <code>parse_request_text()</code>가 사용자 자연어 요청을 구조화한다.</li>
+<li><code>graph.py:20</code> — 첫 번째 URL path 형태 문자열을 <code>targetPath</code> 후보로 잡는다.</li>
+<li><code>graph.py:21-25</code> — 요청 문구에 따라 <code>error_rate</code>, <code>latency</code> 의도를 <code>requestedMetrics</code>에 추가한다.</li>
+<li><code>graph.py:26-33</code> — status 범위와 5xx focus를 기본 request dict에 담는다.</li>
+</ul>
+<h3 id="3-2-로그-파싱-단계에서-수집되는-값">3.2 로그 파싱 단계에서 수집되는 값</h3>
+<p>파일: <code>judgeagent/reference/agent/weblog_agent/tools.py:34-63</code>, <code>graph.py:330-336</code></p>
+<table><thead><tr><th>값</th><th>라인</th><th>의미</th><th>현재 활용</th><th>Judge 직접 분석 여부</th></tr></thead><tbody>
+<tr><td><code>records[]</code></td><td><code>tools.py:35-60</code></td><td>파싱된 access log record 배열</td><td>filter/metric 계산의 원천 데이터</td><td>직접 분석 안 함. trace에서는 tool output redaction으로 raw records 미저장</td></tr>
+<tr><td><code>timestamp</code></td><td><code>tools.py:51</code></td><td>UTC ISO timestamp</td><td>record 필터 후보</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>ip</code></td><td><code>tools.py:52</code></td><td>client IP</td><td><code>top_ips</code>, suspicious IP 계산</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>method</code></td><td><code>tools.py:53</code></td><td>HTTP method</td><td>record 보존</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>path</code></td><td><code>tools.py:54</code></td><td>query 제거한 endpoint path</td><td>filter, top_paths, endpoint consistency</td><td>일부 직접 분석. <code>target_endpoint_consistency</code>가 <code>top_paths</code> 확인</td></tr>
+<tr><td><code>status</code></td><td><code>tools.py:55</code></td><td>HTTP status code</td><td>4xx/5xx/error count 계산</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>latency_ms</code></td><td><code>tools.py:56-57</code></td><td>log line latency</td><td>percentile 계산, latency anomaly</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>user_agent</code></td><td><code>tools.py:58</code></td><td>User-Agent</td><td>record 보존</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>parse_error_count</code></td><td><code>tools.py:63</code>, <code>graph.py:334</code></td><td>파싱 실패 라인 수</td><td>state.metrics에 보존, parse error handling 분석</td><td>직접 분석</td></tr>
+<tr><td><code>total_lines</code></td><td><code>tools.py:63</code></td><td>입력 라인 수</td><td>parse error ratio 계산</td><td>직접 분석</td></tr>
+</tbody></table>
+<p>라인 단위 설명:</p>
+<ul>
+<li><code>tools.py:34-40</code> — <code>parse_access_log()</code>가 JSON 또는 nginx combined log를 파싱한다.</li>
+<li><code>tools.py:42-46</code> — JSON format일 때 JSON decode 실패를 <code>errors</code>에 누적한다.</li>
+<li><code>tools.py:47-60</code> — regex match 후 timestamp/path/status/latency 등을 record로 만든다.</li>
+<li><code>tools.py:61-63</code> — 파싱 실패 수와 전체 라인 수를 반환한다.</li>
+<li><code>graph.py:330-331</code> — <code>parse_error_ignored</code> fault fixture에서는 의도적으로 잘못된 log line을 주입한다.</li>
+<li><code>graph.py:333-336</code> — parse output을 state에 저장하고 high parse error를 error로 기록한다. fault가 <code>parse_error_ignored</code>면 이 차단이 비활성화된다.</li>
+</ul>
+<h3 id="3-3-compute_log_metrics-가-계산하는-metrics">3.3 <code>compute_log_metrics</code>가 계산하는 metrics</h3>
+<p>파일: <code>judgeagent/reference/agent/weblog_agent/tools.py:91-110</code>, 호출부 <code>graph.py:345-352</code></p>
+<table><thead><tr><th>metric 이름</th><th>라인</th><th>계산식/수집 방식</th><th>현재 Reference Agent 활용</th><th>Judge 직접 분석 여부</th></tr></thead><tbody>
+<tr><td><code>request_count</code></td><td>92, 100</td><td>filtered records 길이</td><td>report, evidence, anomaly denominator</td><td>간접. <code>metric_result_consistency</code>가 tool result 존재성/faultInjected만 확인</td></tr>
+<tr><td><code>4xx_count</code></td><td>93, 102</td><td>status 400~499 count</td><td>report metric</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>5xx_count</code></td><td>94, 103</td><td>status 500~599 count</td><td>report metric</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>error_count</code></td><td>95, 101</td><td>4xx + 5xx</td><td>report metric</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>error_rate</code></td><td>104</td><td><code>error_count / request_count</code>, 4자리 반올림</td><td>anomaly, report, evidence</td><td>값 자체는 직접 분석 안 함. evidence refs에는 포함</td></tr>
+<tr><td><code>p50_latency_ms</code></td><td>105</td><td>latency 50 percentile</td><td>report metric</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>p95_latency_ms</code></td><td>106</td><td>latency 95 percentile</td><td>latency anomaly, report</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>p99_latency_ms</code></td><td>107</td><td>latency 99 percentile</td><td>report metric</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>top_paths</code></td><td>108</td><td>path별 상위 5개</td><td>report, endpoint consistency</td><td>직접 분석. expected target path와 비교</td></tr>
+<tr><td><code>top_ips</code></td><td>109</td><td>IP별 상위 5개</td><td>suspicious IP anomaly</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>parse_error_count</code></td><td><code>graph.py:350-351</code></td><td>이전 parse 단계 값을 metric dict에 병합</td><td>report/validation/finding 근거</td><td>직접 분석</td></tr>
+<tr><td><code>faultInjected</code></td><td><code>graph.py:346-348</code></td><td>metric hallucination fixture에서 삽입</td><td>drift fixture</td><td>직접 분석</td></tr>
+</tbody></table>
+<p>라인 단위 설명:</p>
+<ul>
+<li><code>tools.py:91</code> — <code>compute_log_metrics(records, group_by=None, latency_percentiles=None)</code>는 인자를 받지만 현재 구현은 <code>group_by</code>, <code>latency_percentiles</code> 값을 실제 분기에는 사용하지 않고 고정 metric set을 계산한다.</li>
+<li><code>tools.py:92-95</code> — request/error count 계열을 산출한다.</li>
+<li><code>tools.py:96-99</code> — latency 배열, top path, top IP를 만든다.</li>
+<li><code>tools.py:100-110</code> — metric dict를 반환한다.</li>
+<li><code>graph.py:345-348</code> — <code>metric_hallucination</code> fault에서는 tool 호출 없이 조작된 metric dict를 state에 넣고 <code>faultInjected=True</code>를 남긴다.</li>
+<li><code>graph.py:349-352</code> — 정상 경로에서는 tool_start/tool_end로 <code>compute_log_metrics</code>를 기록하고 parse error count를 병합한다.</li>
+</ul>
+<h3 id="3-4-anomaly-detection에서-파생되는-metric성-값">3.4 anomaly detection에서 파생되는 metric성 값</h3>
+<p>파일: <code>judgeagent/reference/agent/weblog_agent/tools.py:113-130</code>, 호출부 <code>graph.py:353-356</code></p>
+<table><thead><tr><th>anomaly type</th><th>관련 metric</th><th>라인</th><th>조건</th><th>현재 활용</th><th>Judge 직접 분석 여부</th></tr></thead><tbody>
+<tr><td><code>error_rate_spike</code></td><td><code>error_rate</code></td><td>117-123</td><td>warning 0.05 이상, critical 0.10 이상</td><td>report anomalies, validation/evidence 필요성</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>latency_spike</code></td><td><code>p95_latency_ms</code></td><td>124-126</td><td>p95 latency 1000ms 이상</td><td>report anomalies</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>suspicious_ip</code></td><td><code>top_ips</code>, <code>request_count</code></td><td>127-129</td><td>단일 IP가 50% 초과</td><td>report anomalies</td><td>직접 분석 안 함</td></tr>
+</tbody></table>
+<p>라인 단위 설명:</p>
+<ul>
+<li><code>tools.py:113-116</code> — threshold 기본값을 정의한다.</li>
+<li><code>tools.py:117-123</code> — error rate가 threshold를 넘으면 severity와 함께 anomaly를 만든다.</li>
+<li><code>tools.py:124-126</code> — p95 latency warning을 anomaly로 만든다.</li>
+<li><code>tools.py:127-129</code> — 상위 IP traffic 비중이 50% 초과인지 본다.</li>
+<li><code>graph.py:353-356</code> — <code>detect_log_anomalies</code> tool output을 <code>state.anomalies</code>에 저장한다.</li>
+</ul>
+<h3 id="3-5-validation-evidence에서-metric을-활용하는-코드">3.5 validation/evidence에서 metric을 활용하는 코드</h3>
+<table><thead><tr><th>파일/라인</th><th>코드가 보는 값</th><th>의미</th><th>Judge 직접 분석 여부</th></tr></thead><tbody>
+<tr><td><code>validation.py:4-8</code></td><td><code>state.metrics</code></td><td>metric이 없으면 <code>metrics_missing</code> issue</td><td>간접. validation_result를 통해 <code>validation_path_coverage</code>, prompt instruction violation에 영향</td></tr>
+<tr><td><code>validation.py:8-10</code></td><td><code>state.anomalies</code>, <code>state.evidence.logLines</code></td><td>anomaly가 있는데 evidence가 없으면 issue</td><td>간접</td></tr>
+<tr><td><code>graph.py:365-368</code></td><td><code>error_rate</code>, <code>request_count</code>, 5xx raw lines</td><td>evidence metricRefs 작성</td><td>직접 분석 안 함</td></tr>
+<tr><td><code>graph.py:398-406</code></td><td>validation checks</td><td><code>validation_result</code> event 기록</td><td>직접 분석. validation path 존재 여부와 issues가 detector에서 사용됨</td></tr>
+<tr><td><code>graph.py:141-195</code></td><td>output section, metrics presence, validation passed</td><td><code>prompt_instruction_metrics</code> event 생성</td><td>직접 분석</td></tr>
+</tbody></table>
+<h2 id="4-judge-agent가-현재-직접-분석하는-drift-metrics">4. Judge Agent가 현재 직접 분석하는 drift metrics</h2>
+<p><code>judgeagent/judge_agent/analysis/analyzer.py:12-19</code>에서 trace를 load한 뒤 <code>ReferenceWebLogDetector().detect(run)</code>만 호출한다. 따라서 기본 <code>analyze_trace</code> 기준으로는 아래 detector metric이 현재 직접 분석 대상이다.</p>
+<table><thead><tr><th>metric</th><th>detector 코드</th><th>분석하는 값</th><th>finding 조건</th><th>관련 수집 코드</th></tr></thead><tbody>
+<tr><td><code>prompt_template_version_present</code></td><td><code>detectors.py:49-70</code></td><td>prompt template name/version/present</td><td>prompt metadata가 없으면 low finding</td><td><code>graph.py:100-119</code>, <code>graph.py:173-181</code></td></tr>
+<tr><td><code>output_format_compliance</code></td><td><code>detectors.py:72-91</code></td><td><code>prompt_instruction_metrics.output_format</code> 또는 final section</td><td>output format non-compliant면 medium finding</td><td><code>graph.py:147-159</code>, <code>graph.py:173-185</code></td></tr>
+<tr><td><code>instruction_adherence_score</code></td><td><code>detectors.py:94-114</code></td><td>instruction adherence score/violations</td><td>score &lt; 1 또는 violations 존재 시 high finding</td><td><code>graph.py:160-194</code></td></tr>
+<tr><td><code>output_contract_compliance</code></td><td><code>detectors.py:116-124</code></td><td>final output의 필수 markdown section</td><td>final 없음/section 누락 시 critical/high</td><td><code>validation.py:14-18</code>, <code>reporting.py</code> output</td></tr>
+<tr><td><code>validation_path_coverage</code></td><td><code>detectors.py:125-132</code></td><td><code>node_start</code>, <code>validation_result</code>, skip edge</td><td>validate node/result 없거나 skip 시 critical</td><td><code>graph.py:122-133</code>, <code>graph.py:398-406</code></td></tr>
+<tr><td><code>target_endpoint_consistency</code></td><td><code>detectors.py:134-152</code></td><td>user input target vs filter arg/top_paths</td><td>다른 endpoint 사용 시 high</td><td><code>graph.py:338-343</code>, <code>tools.py:108</code></td></tr>
+<tr><td><code>parse_error_handling_score</code></td><td><code>detectors.py:154-175</code></td><td>parse error ratio와 report/validation 반영</td><td>high parse error가 차단/반영되지 않으면 high</td><td><code>tools.py:63</code>, <code>graph.py:330-336</code></td></tr>
+<tr><td><code>metric_result_consistency</code></td><td><code>detectors.py:177-187</code></td><td>metric tool_end 존재, faultInjected 여부</td><td>compute action without tool result 또는 injected metric이면 high</td><td><code>graph.py:345-352</code></td></tr>
+<tr><td><code>rag_context_presence_and_usage</code></td><td><code>detectors.py:189-200</code></td><td>retrieve_runbook tool_end, final section</td><td>retrieval 누락 또는 final 미반영 시 medium</td><td><code>graph.py:357-360</code></td></tr>
+<tr><td><code>mcp_context_presence_and_usage</code></td><td><code>detectors.py:189-202</code></td><td>MCP tools/call end, final section</td><td>MCP context 누락 또는 final 미반영 시 medium</td><td><code>graph.py:361-364</code></td></tr>
+<tr><td><code>chat_context_grounding</code></td><td><code>detectors.py:204-216</code></td><td>chat trace events</td><td>chat context가 last_analysis에 grounded되지 않으면 medium/low</td><td><code>chat_agent.py</code>의 <code>chat_*</code> trace events</td></tr>
+</tbody></table>
+<h3 id="4-1-detector-실행-순서">4.1 detector 실행 순서</h3>
+<p>파일: <code>judgeagent/judge_agent/analysis/detectors.py:25-42</code></p>
+<ul>
+<li><code>detect()</code>는 10개 check method를 순서대로 실행한다.</li>
+<li>각 check는 <code>Finding(metric=...)</code>을 생성한다.</li>
+<li>마지막에 ID를 <code>JD-001</code>부터 다시 부여한다.</li>
+</ul>
+<h3 id="4-2-score-gate">4.2 score/gate</h3>
+<p>파일: <code>judgeagent/judge_agent/analysis/detectors.py:219-230</code></p>
+<ul>
+<li><code>score_findings()</code>는 <code>detector_rules.json</code>의 severity penalty를 합산해 <code>100 - penalty</code>를 계산한다.</li>
+<li><code>gate_for()</code>는 critical finding 또는 block threshold 미만이면 <code>block</code>, high finding 또는 warning threshold 미만이면 <code>warning</code>, 아니면 <code>pass</code>를 반환한다.</li>
+<li>이 score/gate는 운영 로그 metric 값의 평균/정확도 점수가 아니라 <strong>drift finding severity 기반 품질 게이트</strong>다.</li>
+</ul>
+<h2 id="5-현재-수집하지만-judge-agent가-직접-분석하지-않는-값">5. 현재 수집하지만 Judge Agent가 직접 분석하지 않는 값</h2>
+<p>아래 값들은 reference agent가 현재 수집하거나 계산하지만, <code>ReferenceWebLogDetector</code>가 해당 numeric value 자체를 threshold로 분석하지 않는다.</p>
+<table><thead><tr><th>값</th><th>수집 위치</th><th>현재 사용처</th><th>직접 분석하지 않는 이유/향후 용도</th></tr></thead><tbody>
+<tr><td><code>requestedMetrics</code></td><td><code>graph.py:21-30</code></td><td>state/report context</td><td>현재 ReAct fallback 순서는 항상 고정 metric set 계산. 향후 요청 metric coverage 분석 가능</td></tr>
+<tr><td><code>statusMin</code>, <code>statusMax</code>, <code>statusFocus</code></td><td><code>graph.py:26-32</code></td><td>filter args</td><td>status focus가 실제 metric/report에 반영됐는지 분석 가능</td></tr>
+<tr><td><code>4xx_count</code>, <code>5xx_count</code>, <code>error_count</code></td><td><code>tools.py:93-103</code></td><td>report key metrics</td><td>final output consistency, hallucination detection 확장에 필요</td></tr>
+<tr><td><code>error_rate</code> numeric value</td><td><code>tools.py:104</code></td><td>anomaly/evidence/report</td><td>현재 Judge는 값 threshold를 직접 평가하지 않고 tool result grounding만 봄</td></tr>
+<tr><td><code>p50_latency_ms</code>, <code>p95_latency_ms</code>, <code>p99_latency_ms</code></td><td><code>tools.py:105-107</code></td><td>latency report/anomaly</td><td>latency SLO drift, report claim consistency 확장에 필요</td></tr>
+<tr><td><code>top_ips</code></td><td><code>tools.py:98-109</code></td><td>suspicious IP anomaly</td><td>suspicious actor 분석/grounding 확장에 필요</td></tr>
+<tr><td><code>anomalies[]</code> 내용</td><td><code>tools.py:113-130</code></td><td>report/validation</td><td>현재는 evidence 존재 여부만 validation에서 간접 확인</td></tr>
+<tr><td><code>baseline</code></td><td><code>state.py:15</code>, <code>tools.py:113-119</code></td><td>baseline error_rate expected 후보</td><td>baseline 로딩 구현이 아직 약해 향후 baseline drift 비교에 사용 가능</td></tr>
+<tr><td><code>llm_end.usage</code></td><td><code>graph.py:255</code></td><td>trace에 기록</td><td>token/cost metric 분석은 현재 없음</td></tr>
+<tr><td><code>llm_end.latency_ms</code></td><td><code>graph.py:255</code></td><td>trace에 기록</td><td>LLM latency metric 분석은 현재 없음</td></tr>
+<tr><td><code>group_by</code>, <code>latency_percentiles</code> args</td><td><code>graph.py:349</code>, <code>tools.py:91</code></td><td>tool argument로 전달</td><td>현재 계산 로직은 고정 percentile만 반환. 향후 dynamic grouping/percentile 분석 가능</td></tr>
+</tbody></table>
+<h2 id="6-metrics-json-registry-기준-구현-상태">6. <code>metrics.json</code> registry 기준 구현 상태</h2>
+<p>파일: <code>judgeagent/judge_agent/config/metrics.json</code>, 로딩 코드: <code>judgeagent/judge_agent/core/metrics.py:22-43</code></p>
+<h3 id="6-1-기본-analyze_trace에서-현재-finding-생성-가능">6.1 기본 analyze_trace에서 현재 finding 생성 가능</h3>
+<table><thead><tr><th>metric</th><th>상태</th><th>근거</th></tr></thead><tbody>
+<tr><td><code>output_contract_compliance</code></td><td>현재 분석</td><td><code>detectors.py:116-124</code></td></tr>
+<tr><td><code>target_endpoint_consistency</code></td><td>현재 분석</td><td><code>detectors.py:134-152</code></td></tr>
+<tr><td><code>metric_result_consistency</code></td><td>현재 분석</td><td><code>detectors.py:177-187</code></td></tr>
+<tr><td><code>validation_path_coverage</code></td><td>현재 분석</td><td><code>detectors.py:125-132</code></td></tr>
+<tr><td><code>parse_error_handling_score</code></td><td>현재 분석</td><td><code>detectors.py:154-175</code></td></tr>
+<tr><td><code>rag_context_presence_and_usage</code></td><td>현재 분석</td><td><code>detectors.py:189-200</code></td></tr>
+<tr><td><code>mcp_context_presence_and_usage</code></td><td>현재 분석</td><td><code>detectors.py:189-202</code></td></tr>
+<tr><td><code>chat_context_grounding</code></td><td>현재 분석</td><td><code>detectors.py:204-216</code></td></tr>
+<tr><td><code>output_format_compliance</code></td><td>현재 분석</td><td><code>detectors.py:72-91</code></td></tr>
+<tr><td><code>prompt_template_version_present</code></td><td>현재 분석</td><td><code>detectors.py:49-70</code></td></tr>
+<tr><td><code>instruction_adherence_score</code></td><td>현재 분석</td><td><code>detectors.py:94-114</code></td></tr>
+</tbody></table>
+<h3 id="6-2-별도-prompt-regression-flow에서-현재-분석-가능">6.2 별도 prompt regression flow에서 현재 분석 가능</h3>
+<p>파일: <code>judgeagent/judge_agent/analysis/prompt_regression.py:107-216</code></p>
+<table><thead><tr><th>metric</th><th>상태</th><th>근거</th></tr></thead><tbody>
+<tr><td><code>gate_regression</code></td><td>별도 비교 flow에서 분석</td><td>baseline/candidate gate 악화 시 finding, <code>prompt_regression.py:107-124</code></td></tr>
+<tr><td><code>new_high_severity_findings</code></td><td>별도 비교 flow에서 분석</td><td>candidate에 새 high/critical finding 발생 시, <code>prompt_regression.py:126-137</code></td></tr>
+<tr><td><code>prompt_version_regression_score</code></td><td>별도 비교 flow에서 분석</td><td>score delta, gate, new findings penalty로 regression score 계산, <code>prompt_regression.py:140-160</code></td></tr>
+<tr><td><code>tool_and_output_stability_score</code></td><td>별도 비교 flow에서 분석</td><td>tool sequence, validation path, target endpoint, output compliance 안정성, <code>prompt_regression.py:162-196</code></td></tr>
+</tbody></table>
+<h3 id="6-3-정의되어-있지만-현재-judge-detector에서-직접-finding을-만들지-않는-metrics">6.3 정의되어 있지만 현재 Judge detector에서 직접 finding을 만들지 않는 metrics</h3>
+<p>아래 metric들은 <code>metrics.json</code>에는 정의되어 있고, 향후 분석을 위해 이름/카테고리/측정방식이 준비되어 있지만 현재 기본 detector 또는 prompt regression finding 생성 코드에 직접 연결되지 않았다.</p>
+<table><thead><tr><th>metric</th><th>registry 목적</th><th>현재 상태</th></tr></thead><tbody>
+<tr><td><code>tool_argument_correctness</code></td><td>tool argument schema/context correctness</td><td>미구현. target endpoint 일부만 별도 metric으로 분석</td></tr>
+<tr><td><code>tool_error_handling_score</code></td><td>tool error 처리 적절성</td><td>미구현. <code>tool_error</code> event는 normalize되지만 detector 없음</td></tr>
+<tr><td><code>answer_context_groundedness</code></td><td>final output과 retrieved context grounding</td><td>미구현. RAG 존재/section만 확인</td></tr>
+<tr><td><code>node_sequence_correctness</code></td><td>기대 workflow node 순서</td><td>미구현. validation path만 확인</td></tr>
+<tr><td><code>verification_coverage</code></td><td>완료 전 검증 수행 범위</td><td>미구현. validation path/output contract 일부만 확인</td></tr>
+<tr><td><code>redundant_tool_call_count</code></td><td>중복 tool 호출 횟수</td><td>미구현</td></tr>
+<tr><td><code>missing_required_context</code></td><td>필요한 context 누락</td><td>미구현. RAG/MCP 존재 여부만 확인</td></tr>
+<tr><td><code>retrieval_context_precision</code></td><td>retrieved chunk precision</td><td>미구현</td></tr>
+<tr><td><code>retrieval_context_relevance</code></td><td>retriever relevance</td><td>미구현</td></tr>
+<tr><td><code>final_answer_consistency</code></td><td>final answer와 trace 실행 결과 일치</td><td>미구현. metric_result_consistency가 일부 대체</td></tr>
+<tr><td><code>hallucinated_completion_claim</code></td><td>수행하지 않은 작업 완료 주장</td><td>미구현</td></tr>
+<tr><td><code>task_completion_score</code></td><td>사용자 요청 완료도</td><td>미구현</td></tr>
+<tr><td><code>edge_decision_correctness</code></td><td>conditional edge 선택 정확성</td><td>미구현</td></tr>
+<tr><td><code>graph_completion_path_valid</code></td><td>정상 종료 path 여부</td><td>미구현</td></tr>
+<tr><td><code>node_loop_count</code></td><td>node 반복 횟수</td><td>미구현</td></tr>
+<tr><td><code>required_checkpoint_present</code></td><td>checkpoint/state snapshot 존재</td><td>미구현</td></tr>
+<tr><td><code>memory_claim_supported</code></td><td>memory claim grounding</td><td>미구현</td></tr>
+<tr><td><code>memory_update_correctness</code></td><td>memory 저장 정확성</td><td>미구현</td></tr>
+<tr><td><code>state_freshness_score</code></td><td>state/checkpoint 최신성</td><td>미구현</td></tr>
+<tr><td><code>state_value_grounding</code></td><td>state 값이 이전 event에서 근거를 갖는지</td><td>미구현</td></tr>
+<tr><td><code>action_grounding_score</code></td><td>ReAct action argument grounding</td><td>미구현</td></tr>
+<tr><td><code>observation_utilization_score</code></td><td>observation이 다음 reasoning/report에 반영되는지</td><td>미구현</td></tr>
+<tr><td><code>react_step_completeness</code></td><td>Thought/Action/Observation sequence 완전성</td><td>미구현</td></tr>
+<tr><td><code>tool_result_grounding_score</code></td><td>final output과 tool result 일치</td><td>미구현. 향후 <code>metric_result_consistency</code> 일반화 후보</td></tr>
+<tr><td><code>tool_selection_accuracy</code></td><td>task에 맞는 tool 선택</td><td>미구현</td></tr>
+</tbody></table>
+<h2 id="7-line-by-line-코드-상세">7. line-by-line 코드 상세</h2>
+<h3 id="7-1-tools-py-로그-metric-수집-계산">7.1 <code>tools.py</code> — 로그 metric 수집/계산</h3>
+<table><thead><tr><th>라인</th><th>코드 요소</th><th>상세</th></tr></thead><tbody>
+<tr><td>11-14</td><td><code>LOG_RE</code></td><td>nginx combined log + 마지막 latency 숫자를 파싱하는 정규식. latency 수집의 시작점</td></tr>
+<tr><td>17-28</td><td><code>read_log_file</code></td><td>file 존재 확인, 최대 line 수 제한, truncation flag 반환</td></tr>
+<tr><td>34-63</td><td><code>parse_access_log</code></td><td>raw line을 structured record로 변환하고 <code>parse_error_count</code>, <code>total_lines</code> 반환</td></tr>
+<tr><td>66-80</td><td><code>filter_log_records</code></td><td>timestamp/path/status 조건으로 records 필터링</td></tr>
+<tr><td>83-89</td><td><code>_percentile</code></td><td>p50/p95/p99 계산용 percentile helper</td></tr>
+<tr><td>91-110</td><td><code>compute_log_metrics</code></td><td>request/error/latency/top path/top IP metric dict 생성</td></tr>
+<tr><td>113-130</td><td><code>detect_log_anomalies</code></td><td>error rate, p95 latency, IP concentration 기반 anomaly 생성</td></tr>
+</tbody></table>
+<h3 id="7-2-graph-py-metric-수집-orchestration과-trace-emission">7.2 <code>graph.py</code> — metric 수집 orchestration과 trace emission</h3>
+<table><thead><tr><th>라인</th><th>코드 요소</th><th>상세</th></tr></thead><tbody>
+<tr><td>19-33</td><td><code>parse_request_text</code></td><td>user input에서 target path/requested metric/status focus 추출</td></tr>
+<tr><td>87-139</td><td><code>run</code></td><td>run_start, instruction_snapshot, graph node/edge, final_output, run_end를 emit</td></tr>
+<tr><td>141-195</td><td><code>_emit_prompt_instruction_metrics</code></td><td>prompt metadata, output format compliance, instruction adherence score 수집</td></tr>
+<tr><td>206-216</td><td><code>_tool</code></td><td>tool_start/tool_end/tool_error를 trace에 남기며 큰 <code>lines</code>, <code>records</code> output은 trace에서 제외</td></tr>
+<tr><td>244-259</td><td><code>_llm_call</code></td><td>LLM output, usage, latency_ms를 trace에 기록. 현재 Judge metric으로는 미분석</td></tr>
+<tr><td>297-317</td><td><code>_fallback_action</code></td><td>deterministic ReAct 순서. metric 계산 전후 조건을 결정</td></tr>
+<tr><td>330-336</td><td><code>parse_access_log</code> action</td><td>parse error count를 <code>state.metrics</code>에 저장하고 high parse error를 state error로 반영</td></tr>
+<tr><td>338-343</td><td><code>filter_log_records</code> action</td><td>fault 시 wrong endpoint를 주입해 <code>target_endpoint_consistency</code> 분석을 가능하게 함</td></tr>
+<tr><td>345-352</td><td><code>compute_log_metrics</code> action</td><td>정상 metric 계산 또는 <code>metric_hallucination</code> fault 주입</td></tr>
+<tr><td>353-356</td><td><code>detect_log_anomalies</code> action</td><td>anomaly 목록 저장</td></tr>
+<tr><td>365-368</td><td><code>collect_evidence</code> action</td><td>5xx raw line과 <code>error_rate</code>, <code>request_count</code> metric reference 저장</td></tr>
+<tr><td>398-406</td><td>validation/finalize</td><td>validation_result event를 emit해 Judge가 validation path를 확인 가능하게 함</td></tr>
+</tbody></table>
+<h3 id="7-3-state-py-validation-py-metric-state와-품질-검증">7.3 <code>state.py</code> / <code>validation.py</code> — metric state와 품질 검증</h3>
+<table><thead><tr><th>파일/라인</th><th>코드 요소</th><th>상세</th></tr></thead><tbody>
+<tr><td><code>state.py:8-23</code></td><td><code>WebLogAnalysisState</code> fields</td><td><code>metrics</code>, <code>baseline</code>, <code>anomalies</code>, <code>evidence</code>, <code>ragContext</code>, <code>mcpContext</code>, <code>validation</code> 보관</td></tr>
+<tr><td><code>state.py:25-45</code></td><td><code>snapshot()</code></td><td>node_start/node_end trace에 들어갈 state summary 생성. metrics는 그대로 포함</td></tr>
+<tr><td><code>validation.py:4-18</code></td><td><code>validate_state</code></td><td>metrics missing, anomaly evidence missing, RAG/MCP missing, output section missing 등을 issue로 반환</td></tr>
+</tbody></table>
+<h3 id="7-4-trace-py-adapters-reference-py-수집-데이터가-judge-분석-입력이-되는-경계">7.4 <code>trace.py</code> / <code>adapters/reference.py</code> — 수집 데이터가 Judge 분석 입력이 되는 경계</h3>
+<table><thead><tr><th>파일/라인</th><th>코드 요소</th><th>상세</th></tr></thead><tbody>
+<tr><td><code>trace.py:38-48</code></td><td><code>emit</code></td><td>모든 event에 <code>type</code>, <code>run_id</code>, <code>timestamp</code>와 payload를 넣고 secret redaction 후 JSONL 저장</td></tr>
+<tr><td><code>trace.py:50-68</code></td><td>node/tool helpers</td><td>graph node, tool call/result/error event를 표준 형태로 기록</td></tr>
+<tr><td><code>adapters/reference.py:16-27</code></td><td><code>load</code></td><td>JSONL trace를 읽어 <code>SimpleAgentRun</code> 생성</td></tr>
+<tr><td><code>adapters/reference.py:41-95</code></td><td><code>_apply_raw_event</code></td><td>run metadata, instructions, prompt metrics, components, validation, final output 추출</td></tr>
+<tr><td><code>adapters/reference.py:97-121</code></td><td><code>_normalize_event</code></td><td>LLM/tool/MCP/node/edge/react/validation/prompt/chat/final events를 공통 <code>SimpleEvent</code>로 변환</td></tr>
+</tbody></table>
+<h3 id="7-5-detectors-py-judge-agent-metric-finding-생성">7.5 <code>detectors.py</code> — Judge Agent metric finding 생성</h3>
+<table><thead><tr><th>라인</th><th>함수</th><th>metric</th><th>상세</th></tr></thead><tbody>
+<tr><td>49-70</td><td><code>prompt_template_version</code></td><td><code>prompt_template_version_present</code></td><td>prompt name/version/present 누락 여부</td></tr>
+<tr><td>72-91</td><td><code>output_format_compliance</code></td><td><code>output_format_compliance</code></td><td>reference agent가 수집한 output format compliance 확인</td></tr>
+<tr><td>94-114</td><td><code>instruction_adherence</code></td><td><code>instruction_adherence_score</code></td><td>adherence score/violations 확인</td></tr>
+<tr><td>116-124</td><td><code>output_contract</code></td><td><code>output_contract_compliance</code></td><td>final output 존재와 required markdown sections 확인</td></tr>
+<tr><td>125-132</td><td><code>validation_path</code></td><td><code>validation_path_coverage</code></td><td>validate node/result/skip edge 확인</td></tr>
+<tr><td>134-152</td><td><code>wrong_endpoint</code></td><td><code>target_endpoint_consistency</code></td><td>target path와 filter arg/top_paths 비교</td></tr>
+<tr><td>154-175</td><td><code>parse_error_handling</code></td><td><code>parse_error_handling_score</code></td><td>high parse error ratio와 report/validation 반영 확인</td></tr>
+<tr><td>177-187</td><td><code>metric_consistency</code></td><td><code>metric_result_consistency</code></td><td>compute action의 tool result 존재, injected metric flag 확인</td></tr>
+<tr><td>189-202</td><td><code>rag_mcp_presence</code></td><td><code>rag_context_presence_and_usage</code>, <code>mcp_context_presence_and_usage</code></td><td>RAG/MCP call 및 final section 존재 확인</td></tr>
+<tr><td>204-216</td><td><code>chat_context</code></td><td><code>chat_context_grounding</code></td><td>chat response가 analysis context에 grounded 되었는지 확인</td></tr>
+<tr><td>219-230</td><td><code>score_findings</code>, <code>gate_for</code></td><td>score/gate</td><td>severity penalty와 gate threshold 적용</td></tr>
+</tbody></table>
+<h2 id="8-향후-분석-확장-후보">8. 향후 분석 확장 후보</h2>
+<p>현재 trace에는 이미 있지만 Judge가 미활용하는 데이터가 많다. 우선순위는 다음이 좋아 보인다.</p>
+<p>1. <strong><code>tool_result_grounding_score</code> / <code>final_answer_consistency</code></strong>  </p>
+<p>   <code>compute_log_metrics</code> output과 final report의 숫자 claim을 비교하면 hallucinated metric을 더 일반적으로 잡을 수 있다.</p>
+<p>2. <strong><code>tool_error_handling_score</code></strong>  </p>
+<p>   <code>tool_error</code> event가 이미 있으므로 error 발생 후 retry/stop/report 반영 여부를 분석할 수 있다.</p>
+<p>3. <strong><code>node_sequence_correctness</code> / <code>graph_completion_path_valid</code></strong>  </p>
+<p>   <code>node_start</code>, <code>edge_selected</code>가 이미 trace에 있으므로 full workflow path 검증으로 확장 가능하다.</p>
+<p>4. <strong>LLM usage/latency metrics</strong>  </p>
+<p>   <code>llm_end.usage</code>, <code>llm_end.latency_ms</code>가 trace에 있으므로 cost/latency/SLO metric을 추가할 수 있다.</p>
+<p>5. <strong>retrieval quality metrics</strong>  </p>
+<p>   RAG 문서가 <code>state.ragContext</code>에 남으므로 precision/relevance judge를 붙일 수 있다.</p>
+<h2 id="10-api-ui에서-metrics를-노출하는-코드">10. API/UI에서 metrics를 노출하는 코드</h2>
+<p>운영 로그 metric 계산과 Judge finding 생성 외에, 현재 구현은 metric registry와 분석 결과를 API/UI에 노출한다. 이 코드는 metric을 새로 계산하지는 않지만, 수집·분석된 metric 데이터를 사용자가 확인하는 경로라 함께 관리해야 한다.</p>
+<table><thead><tr><th>영역</th><th>파일/라인</th><th>역할</th><th>분석 여부</th></tr></thead><tbody>
+<tr><td>API config summary</td><td><code>judgeagent/backend/api_services.py:75-87</code></td><td><code>list_metrics()</code> count를 <code>/api/config</code> 응답에 포함</td><td>분석 아님. registry 노출</td></tr>
+<tr><td>API metric registry</td><td><code>judgeagent/backend/api_services.py:90-91</code></td><td><code>metrics.json</code>의 전체 metric spec을 <code>metric.to_dict()</code>로 반환</td><td>분석 아님. 정의 노출</td></tr>
+<tr><td>HTTP endpoint</td><td><code>judgeagent/backend/api.py:85-87</code></td><td><code>GET /api/metrics</code>가 <code>metric_list()</code> 호출</td><td>분석 아님. API 전달</td></tr>
+<tr><td>UI finding 표시</td><td><code>judgeagent/frontend/app/src/components/MetricsPanel.tsx:36-82</code></td><td>finding metric/severity/confidence/evidence 표시</td><td>분석 아님. 결과 렌더링</td></tr>
+<tr><td>UI gate/severity summary</td><td><code>judgeagent/frontend/app/src/components/MetricsPanel.tsx:146-178</code></td><td>gate, severity count, total findings 표시</td><td>분석 아님. 결과 렌더링</td></tr>
+<tr><td>UI prompt regression summary</td><td><code>judgeagent/frontend/app/src/components/MetricsPanel.tsx:85-124</code></td><td>prompt regression score/gate/new high findings 표시</td><td>분석 아님. 결과 렌더링</td></tr>
+</tbody></table>
+<p>라인 단위 설명:</p>
+<ul>
+<li><code>api_services.py:21</code> — <code>judge_agent.core.metrics.list_metrics</code>를 import한다.</li>
+<li><code>api_services.py:75-87</code> — config snapshot에 metric registry 개수를 넣는다. 현재 metric 개수는 <code>metrics.json</code> 기준 40개다.</li>
+<li><code>api_services.py:90-91</code> — <code>/api/metrics</code>용 payload로 registry 전체를 반환한다. 여기서 반환되는 metric은 “정의”이며, run별 측정값이 아니다.</li>
+<li><code>api.py:85-87</code> — FastAPI route <code>GET /api/metrics</code>를 등록한다.</li>
+<li><code>MetricsPanel.tsx:36-82</code> — Judge가 생성한 <code>Finding.metric</code>, <code>severity</code>, <code>confidence</code>, <code>evidence</code>, <code>expected</code>, <code>actual</code>, <code>recommendation</code>을 화면에 표시한다.</li>
+<li><code>MetricsPanel.tsx:85-124</code> — prompt regression flow 결과의 <code>regressionScore</code>, baseline/candidate gate/score, new high/critical finding count를 표시한다.</li>
+<li><code>MetricsPanel.tsx:146-178</code> — analysis summary의 gate/severity/finding count를 metric panel 상단 카드로 표시한다.</li>
+</ul>
+<h2 id="10-빠른-참조-현재-분석-미분석-구분">10. 빠른 참조: 현재 분석/미분석 구분</h2>
+<h3 id="현재-분석-중">현재 분석 중</h3>
+<ul>
+<li>prompt metadata: <code>prompt_template_version_present</code></li>
+<li>prompt/output: <code>output_format_compliance</code>, <code>instruction_adherence_score</code>, <code>output_contract_compliance</code></li>
+<li>graph/validation: <code>validation_path_coverage</code></li>
+<li>tool/metric grounding: <code>target_endpoint_consistency</code>, <code>parse_error_handling_score</code>, <code>metric_result_consistency</code></li>
+<li>context: <code>rag_context_presence_and_usage</code>, <code>mcp_context_presence_and_usage</code>, <code>chat_context_grounding</code></li>
+<li>prompt regression 별도 flow: <code>gate_regression</code>, <code>new_high_severity_findings</code>, <code>prompt_version_regression_score</code>, <code>tool_and_output_stability_score</code></li>
+</ul>
+<h3 id="현재-수집하지만-직접-분석하지-않음">현재 수집하지만 직접 분석하지 않음</h3>
+<ul>
+<li><code>requestedMetrics</code>, <code>statusFocus</code></li>
+<li><code>4xx_count</code>, <code>5xx_count</code>, <code>error_count</code>, <code>error_rate</code> numeric threshold 자체</li>
+<li><code>p50_latency_ms</code>, <code>p95_latency_ms</code>, <code>p99_latency_ms</code></li>
+<li><code>top_ips</code>, suspicious IP anomaly의 세부값</li>
+<li><code>llm_end.usage</code>, <code>llm_end.latency_ms</code></li>
+<li>baseline 대비 metric 변화</li>
+<li>retrieval precision/relevance, final answer 전체 numeric consistency</li>
+</ul></main></body></html>
