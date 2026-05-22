@@ -299,3 +299,8 @@ INFO:     127.0.0.1:55183 - "OPTIONS /api/prompt-regressions HTTP/1.1" 200 OK
 INFO:     127.0.0.1:55183 - "POST /api/prompt-regressions HTTP/1.1" 200 OK
 INFO:     127.0.0.1:55187 - "OPTIONS /api/judge/sessions/session-1779195630259/messages HTTP/1.1" 200 OK
 INFO:     127.0.0.1:55187 - "POST /api/judge/sessions/session-1779195630259/messages HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [84785]
+INFO:     Stopping reloader process [64528]
